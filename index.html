@@ -1287,8 +1287,18 @@ well-001,A-1観測井,35.681,139.767,2025-A-01,0.5,true,false</pre>
                                 ${koujiDisplay}
                             </div>
                         </div>
+                        <button class="edit-well-list-btn text-gray-400 hover:text-blue-600 p-1" data-well-id="${well.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                                <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
                     `;
                     li.querySelector('[data-well-id]').addEventListener('click', () => jumpToWell(well));
+                    li.querySelector('.edit-well-list-btn').addEventListener('click', () => {
+                        wellListModal.classList.add('modal-hidden');
+                        openWellForm('edit', well);
+                    });
                     listContainer.appendChild(li);
                 });
             }
@@ -1334,9 +1344,19 @@ well-001,A-1観測井,35.681,139.767,2025-A-01,0.5,true,false</pre>
                 label.textContent = '測定値';
                 valueInput.value = '';
                 document.getElementById('edit-measurement-time').value = new Date().toISOString().slice(0, 16);
-                // We need to ask for the type if adding new
-                // This can be a simple prompt or a select dropdown in the modal for a better UX
-                const type = prompt("測定種別を入力してください ('水位' または '揚水量'):");
+                
+                let type;
+                if (currentWell.monitors_water_level && currentWell.monitors_pumping_rate) {
+                    type = prompt("測定種別を入力してください ('水位' または '揚水量'):");
+                } else if (currentWell.monitors_water_level) {
+                    type = '水位';
+                } else if (currentWell.monitors_pumping_rate) {
+                    type = '揚水量';
+                } else {
+                    alert('この井戸は観測種別が設定されていません。');
+                    return;
+                }
+
                 if (type === '水位') {
                     typeInput.value = 'water_level';
                      label.textContent = '基準点からの水位 (m)';
