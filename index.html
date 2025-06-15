@@ -100,35 +100,37 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         <div class="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
             <div class="mt-3">
                 <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">新規井戸の追加</h3>
-                <div class="space-y-4">
-                    <div>
-                        <label for="new-well-id" class="block text-sm font-medium text-gray-700">井戸ID (必須)</label>
-                        <input type="text" id="new-well-id" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                    </div>
-                    <div>
-                        <label for="new-well-name" class="block text-sm font-medium text-gray-700">井戸名 (必須)</label>
-                        <input type="text" id="new-well-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <div class="w-1/2">
-                            <label for="new-well-lat" class="block text-sm font-medium text-gray-700">緯度 (必須)</label>
-                            <input type="number" id="new-well-lat" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <form id="add-well-form">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="new-well-id" class="block text-sm font-medium text-gray-700">井戸ID (必須)</label>
+                            <input type="text" id="new-well-id" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
-                        <div class="w-1/2">
-                            <label for="new-well-lng" class="block text-sm font-medium text-gray-700">経度 (必須)</label>
-                            <input type="number" id="new-well-lng" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <div>
+                            <label for="new-well-name" class="block text-sm font-medium text-gray-700">井戸名 (必須)</label>
+                            <input type="text" id="new-well-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div class="w-1/2">
+                                <label for="new-well-lat" class="block text-sm font-medium text-gray-700">緯度 (必須)</label>
+                                <input type="number" id="new-well-lat" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            </div>
+                            <div class="w-1/2">
+                                <label for="new-well-lng" class="block text-sm font-medium text-gray-700">経度 (必須)</label>
+                                <input type="number" id="new-well-lng" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            </div>
+                        </div>
+                        <button id="select-location-btn" type="button" class="w-full text-sm text-blue-600 hover:underline">または地図上で位置を選択</button>
+                        <div>
+                            <label for="new-well-address" class="block text-sm font-medium text-gray-700">所在地</label>
+                            <input type="text" id="new-well-address" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label for="new-well-elevation" class="block text-sm font-medium text-gray-700">標高 (m)</label>
+                            <input type="number" step="0.1" id="new-well-elevation" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
                     </div>
-                    <button id="select-location-btn" class="w-full text-sm text-blue-600 hover:underline">または地図上で位置を選択</button>
-                    <div>
-                        <label for="new-well-address" class="block text-sm font-medium text-gray-700">所在地</label>
-                        <input type="text" id="new-well-address" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                    </div>
-                    <div>
-                        <label for="new-well-elevation" class="block text-sm font-medium text-gray-700">標高 (m)</label>
-                        <input type="number" step="0.1" id="new-well-elevation" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                    </div>
-                </div>
+                </form>
                 <div id="add-well-error" class="mt-2 text-sm text-red-600"></div>
                 <div class="items-center px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse mt-4">
                     <button id="save-new-well-btn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
@@ -309,7 +311,6 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                         listenForWells(); // Start listening for real-time updates
                     } else {
                         console.log("No user signed in.");
-                        // Handle case where user is not signed in
                     }
                 });
 
@@ -318,12 +319,15 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                alert("アプリケーションの初期化に失敗しました。設定を確認してください。");
+                // ★★★★★ 修正点: 具体的なエラーメッセージを表示 ★★★★★
+                 if (error.code === 'auth/configuration-not-found') {
+                    alert("Firebase認証エラー: 匿名認証が有効になっていません。\n\nFirebaseコンソールの「Authentication」>「Sign-in method」タブで、「匿名」プロバイダを有効にしてください。");
+                } else {
+                    alert("アプリケーションの初期化に失敗しました。設定を確認してください。");
+                }
             }
         }
         
-        // (以降のコードは変更ありません)
-        // ...
         // =================================================================================
         // アプリケーションの初期設定とPWAサービスワーカーの登録
         // =================================================================================
@@ -352,9 +356,8 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // =================================================================================
         
         function getCollections() {
-            // This needs to be unique for each user/app instance if you want to isolate data
-            // For a truly public app, this structure is fine.
-            const appId = "well-app-public-data";
+            // ★★★★★ 修正点: GitHub Pages用にプロジェクトIDをフォールバックとして使用 ★★★★★
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'idochousa2025';
             const wellsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'wells');
             const measurementsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'measurements');
             return { wellsCollectionRef, measurementsCollectionRef };
@@ -810,13 +813,18 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 await setDoc(docRef, newWell);
                 console.log('新規井戸を保存しました:', newWell);
                 addWellModal.classList.add('modal-hidden');
-                // Reset form
-                document.getElementById('new-well-id').value = '';
-                document.getElementById('new-well-name').value = '';
-                document.getElementById('new-well-lat').value = '';
-                document.getElementById('new-well-lng').value = '';
-                document.getElementById('new-well-address').value = '';
-                document.getElementById('new-well-elevation').value = '';
+                document.getElementById('add-well-form').reset();
+
+                // ★★★★★ 修正点: マーカーを手動で即時追加 ★★★★★
+                const fullWellData = { id, ...newWell };
+                const marker = L.marker([fullWellData.lat, fullWellData.lng]);
+                marker.bindPopup(`<b>${fullWellData.name}</b>`).on('click', () => {
+                    openWellDetailsPanel(fullWellData);
+                });
+                wellMarkersLayer.addLayer(marker);
+                wellMarkers[fullWellData.id] = marker;
+                map.flyTo([fullWellData.lat, fullWellData.lng], 16);
+
             } catch(e) {
                 errorDiv.textContent = `データベースエラー: ${e.message}`;
             }
@@ -846,6 +854,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 console.log(`井戸 ${wellIdToDelete} と関連データを削除しました。`);
                 deleteConfirmModal.classList.add('modal-hidden');
                 closePanel();
+                // Realtime listener will handle removing the marker
             } catch (e) {
                 console.error('削除処理中にエラーが発生しました:', e);
                 alert('削除中にエラーが発生しました。');
