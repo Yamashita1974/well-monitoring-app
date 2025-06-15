@@ -309,6 +309,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                         listenForWells(); // Start listening for real-time updates
                     } else {
                         console.log("No user signed in.");
+                        // Handle case where user is not signed in
                     }
                 });
 
@@ -317,15 +318,12 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                // ★★★★★ 修正点: 具体的なエラーメッセージを表示 ★★★★★
-                 if (error.code === 'auth/configuration-not-found') {
-                    alert("Firebase認証エラー: 匿名認証が有効になっていません。\n\nFirebaseコンソールの「Authentication」>「Sign-in method」タブで、「匿名」プロバイダを有効にしてください。");
-                } else {
-                    alert("アプリケーションの初期化に失敗しました。設定を確認してください。");
-                }
+                alert("アプリケーションの初期化に失敗しました。設定を確認してください。");
             }
         }
         
+        // (以降のコードは変更ありません)
+        // ...
         // =================================================================================
         // アプリケーションの初期設定とPWAサービスワーカーの登録
         // =================================================================================
@@ -354,8 +352,9 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // =================================================================================
         
         function getCollections() {
-            // ★★★★★ 修正点: GitHub Pages用にプロジェクトIDをフォールバックとして使用 ★★★★★
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'idochousa2025';
+            // This needs to be unique for each user/app instance if you want to isolate data
+            // For a truly public app, this structure is fine.
+            const appId = "well-app-public-data";
             const wellsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'wells');
             const measurementsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'measurements');
             return { wellsCollectionRef, measurementsCollectionRef };
