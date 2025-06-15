@@ -45,7 +45,12 @@
     <div id="map"></div>
 
     <!-- UIボタンコンテナ -->
-    <div class="fixed bottom-4 right-4 z-[1001] flex flex-col space-y-2">
+    <div class="fixed bottom-4 right-4 z-[1001] flex flex-col items-end space-y-2">
+        <button id="locate-me-btn" class="bg-white text-gray-700 p-4 rounded-full shadow-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" title="現在地へ移動">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+        </button>
         <button id="open-import-modal-btn" class="bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" title="データ取込">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -74,9 +79,8 @@
                         <br><strong>注意：</strong>インポートすると既存のデータは全て上書きされます。
                     </p>
                     <p class="text-sm font-semibold text-gray-700">CSVフォーマット:</p>
-                    <pre class="bg-gray-100 p-2 rounded-md text-xs overflow-x-auto">well_id,well_name,lat,lng,address,elevation
-well-001,A-1観測井,35.681,139.767,東京都千代田区,25.5
-well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
+                    <pre class="bg-gray-100 p-2 rounded-md text-xs overflow-x-auto">well_id,well_name,lat,lng,address,elevation,kouji_bango,reference_point_height
+well-001,A-1観測井,35.681,139.767,東京都千代田区,25.5,2025-A-01,0.5</pre>
                     <p class="text-xs text-gray-500 mt-1">
                         ※ `well_id`, `well_name`, `lat`, `lng` は必須です。
                     </p>
@@ -95,52 +99,57 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         </div>
     </div>
 
-    <!-- 新規井戸追加モーダル -->
-    <div id="add-well-modal" class="modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[1003]">
+    <!-- 新規・編集井戸追加モーダル -->
+    <div id="well-form-modal" class="modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[1003]">
         <div class="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
             <div class="mt-3">
-                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">新規井戸の追加</h3>
-                <form id="add-well-form">
+                <h3 id="well-form-title" class="text-lg leading-6 font-medium text-gray-900 mb-4"></h3>
+                <form id="well-form">
+                    <input type="hidden" id="well-form-mode" value="add">
                     <div class="space-y-4">
                         <div>
-                            <label for="new-well-id" class="block text-sm font-medium text-gray-700">井戸ID (必須)</label>
-                            <input type="text" id="new-well-id" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <label for="well-form-id" class="block text-sm font-medium text-gray-700">井戸ID (必須)</label>
+                            <input type="text" id="well-form-id" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                         </div>
                         <div>
-                            <label for="new-well-name" class="block text-sm font-medium text-gray-700">井戸名 (必須)</label>
-                            <input type="text" id="new-well-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <label for="well-form-name" class="block text-sm font-medium text-gray-700">井戸名 (必須)</label>
+                            <input type="text" id="well-form-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                         </div>
                         <div>
-                            <label for="new-well-kouji-bango" class="block text-sm font-medium text-gray-700">工事番号</label>
-                            <input type="text" id="new-well-kouji-bango" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <label for="well-form-kouji-bango" class="block text-sm font-medium text-gray-700">工事番号</label>
+                            <input type="text" id="well-form-kouji-bango" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                         <div>
+                            <label for="well-form-reference-point-height" class="block text-sm font-medium text-gray-700">基準点高さ (m)</label>
+                            <input type="number" step="0.01" id="well-form-reference-point-height" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm" placeholder="地表を0とした高さ。地表より上は+、下は-。">
                         </div>
                         <div class="flex items-center space-x-4">
                             <div class="w-1/2">
-                                <label for="new-well-lat" class="block text-sm font-medium text-gray-700">緯度 (必須)</label>
-                                <input type="number" id="new-well-lat" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <label for="well-form-lat" class="block text-sm font-medium text-gray-700">緯度 (必須)</label>
+                                <input type="number" id="well-form-lat" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                             </div>
                             <div class="w-1/2">
-                                <label for="new-well-lng" class="block text-sm font-medium text-gray-700">経度 (必須)</label>
-                                <input type="number" id="new-well-lng" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                <label for="well-form-lng" class="block text-sm font-medium text-gray-700">経度 (必須)</label>
+                                <input type="number" id="well-form-lng" step="any" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                             </div>
                         </div>
                         <button id="select-location-btn" type="button" class="w-full text-sm text-blue-600 hover:underline">または地図上で位置を選択</button>
                         <div>
-                            <label for="new-well-address" class="block text-sm font-medium text-gray-700">所在地</label>
-                            <input type="text" id="new-well-address" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <label for="well-form-address" class="block text-sm font-medium text-gray-700">所在地</label>
+                            <input type="text" id="well-form-address" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                         </div>
                         <div>
-                            <label for="new-well-elevation" class="block text-sm font-medium text-gray-700">標高 (m)</label>
-                            <input type="number" step="0.1" id="new-well-elevation" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                            <label for="well-form-elevation" class="block text-sm font-medium text-gray-700">地盤標高 (m)</label>
+                            <input type="number" step="0.1" id="well-form-elevation" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                         </div>
                     </div>
                 </form>
-                <div id="add-well-error" class="mt-2 text-sm text-red-600"></div>
+                <div id="well-form-error" class="mt-2 text-sm text-red-600"></div>
                 <div class="items-center px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse mt-4">
-                    <button id="save-new-well-btn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    <button id="save-well-btn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
                         保存
                     </button>
-                    <button id="close-add-well-modal-btn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm">
+                    <button id="close-well-form-modal-btn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm">
                         キャンセル
                     </button>
                 </div>
@@ -157,10 +166,15 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
-            <div class="mb-4 flex items-center space-x-2">
-                <span class="text-sm font-medium text-gray-700">並び順:</span>
-                <button id="sort-by-name-btn" class="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded-md shadow-sm">井戸名順</button>
-                <button id="sort-by-kouji-btn" class="px-3 py-1 text-sm font-semibold text-gray-700 bg-gray-200 rounded-md shadow-sm">工事番号順</button>
+            <div class="mb-4 flex justify-between items-center">
+                 <div class="flex items-center space-x-2">
+                    <span class="text-sm font-medium text-gray-700">並び順:</span>
+                    <button id="sort-by-name-btn" class="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded-md shadow-sm">井戸名順</button>
+                    <button id="sort-by-kouji-btn" class="px-3 py-1 text-sm font-semibold text-gray-700 bg-gray-200 rounded-md shadow-sm">工事番号順</button>
+                </div>
+                <button id="delete-selected-wells-btn" class="hidden bg-red-600 text-white font-semibold px-3 py-1 rounded-md text-sm hover:bg-red-700">
+                    選択した井戸を削除
+                </button>
             </div>
             <div class="max-h-[70vh] overflow-y-auto">
                 <ul id="well-list-container" class="space-y-2">
@@ -169,6 +183,33 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             </div>
         </div>
     </div>
+    
+    <!-- データ修正モーダル -->
+    <div id="edit-measurement-modal" class="modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[1005]">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">測定データの修正</h3>
+            <div class="space-y-4">
+                <input type="hidden" id="edit-measurement-id">
+                <div>
+                    <label for="edit-measurement-time" class="block text-sm font-medium text-gray-700">観測日時</label>
+                    <input type="datetime-local" id="edit-measurement-time" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                 <div>
+                    <label for="edit-measurement-level" class="block text-sm font-medium text-gray-700">基準点からの水位 (m)</label>
+                    <input type="number" step="0.01" id="edit-measurement-level" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+            </div>
+            <div class="items-center px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse mt-4">
+                <button id="save-edited-measurement-btn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    更新
+                </button>
+                <button id="close-edit-measurement-modal-btn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm">
+                    キャンセル
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- 削除確認モーダル -->
     <div id="delete-confirm-modal" class="modal-hidden fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-[1004]">
@@ -179,11 +220,9 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                     </svg>
                 </div>
-                <h3 class="text-lg leading-6 font-medium text-gray-900 mt-2">井戸を削除しますか？</h3>
+                <h3 id="delete-confirm-title" class="text-lg leading-6 font-medium text-gray-900 mt-2"></h3>
                 <div class="mt-2 px-7 py-3">
-                    <p class="text-sm text-gray-500">
-                        この操作は元に戻せません。この井戸に関連する全ての測定データも永久に削除されます。
-                    </p>
+                    <p id="delete-confirm-message" class="text-sm text-gray-500"></p>
                 </div>
                 <div class="items-center px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                     <button id="confirm-delete-btn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
@@ -210,11 +249,20 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         <div class="mb-6 bg-gray-50 p-4 rounded-lg">
             <div class="flex justify-between items-start">
                  <div>
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">井戸情報</h3>
+                    <div class="flex items-center space-x-2 mb-2">
+                        <h3 class="text-lg font-semibold text-gray-700">井戸情報</h3>
+                        <button id="edit-well-btn" title="井戸情報を修正" class="text-gray-400 hover:text-blue-600">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                                <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
                     <p class="text-sm text-gray-600"><strong>ID:</strong> <span id="well-id-details"></span></p>
                     <p class="text-sm text-gray-600"><strong>工事番号:</strong> <span id="well-kouji-bango-details"></span></p>
+                    <p class="text-sm text-gray-600"><strong>基準点高さ:</strong> <span id="well-reference-point-height-details"></span> m</p>
                     <p class="text-sm text-gray-600"><strong>所在地:</strong> <span id="well-address"></span></p>
-                    <p class="text-sm text-gray-600"><strong>標高:</strong> <span id="well-elevation"></span> m</p>
+                    <p class="text-sm text-gray-600"><strong>地盤標高:</strong> <span id="well-elevation"></span> m</p>
                 </div>
                 <div class="text-right">
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">ユーザー</h3>
@@ -226,7 +274,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         <div class="mb-6">
             <h3 class="text-lg font-semibold text-gray-700 mb-2">新規測定</h3>
             <div class="flex items-center space-x-2">
-                <input type="number" id="water-level-input" step="0.01" placeholder="地表からの水位 (m)" class="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-blue-500">
+                <input type="number" id="water-level-input" step="0.01" placeholder="基準点からの水位 (m)" class="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-blue-500">
                 <button id="add-measurement-btn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-semibold shadow">保存</button>
             </div>
         </div>
@@ -273,7 +321,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, writeBatch, enableNetwork, disableNetwork, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, writeBatch, enableNetwork, disableNetwork, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // =================================================================================
         // グローバル変数と初期設定
@@ -289,6 +337,8 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         let wellMarkersLayer = L.featureGroup();
         let wellMarkers = {};
         let allWellsCache = [];
+        let currentDeleteHandler = null;
+        let userLocationMarker = null;
         
         // =================================================================================
         // Firebase 初期化と認証
@@ -362,7 +412,6 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // =================================================================================
         
         function getCollections() {
-            // ★★★★★ 修正点: データ保存経路を簡素化 ★★★★★
             const wellsCollectionRef = collection(db, 'wells');
             const measurementsCollectionRef = collection(db, 'measurements');
             return { wellsCollectionRef, measurementsCollectionRef };
@@ -375,12 +424,12 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             if (snapshot.empty) {
                 console.log('Firestoreが空のため、サンプルデータを投入します');
                 const wells = [
-                    { id: 'well-001', name: 'A-1観測井', kouji_bango: '2025-A-01', address: '東京都千代田区', elevation: 25.5, lat: 35.681236, lng: 139.767125 },
-                    { id: 'well-002', name: 'B-3調査井', kouji_bango: '2025-B-03', address: '神奈川県横浜市', elevation: 15.2, lat: 35.443707, lng: 139.638031 },
-                    { id: 'well-003', name: 'C-5揚水井', kouji_bango: '2025-A-02', address: '埼玉県さいたま市', elevation: 8.9, lat: 35.861729, lng: 139.645485 }
+                    { id: 'well-001', name: 'A-1観測井', kouji_bango: '2025-A-01', reference_point_height: 0.5, address: '東京都千代田区', elevation: 25.5, lat: 35.681236, lng: 139.767125 },
+                    { id: 'well-002', name: 'B-3調査井', kouji_bango: '2025-B-03', reference_point_height: -0.2, address: '神奈川県横浜市', elevation: 15.2, lat: 35.443707, lng: 139.638031 },
+                    { id: 'well-003', name: 'C-5揚水井', kouji_bango: '2025-A-02', reference_point_height: 0.0, address: '埼玉県さいたま市', elevation: 8.9, lat: 35.861729, lng: 139.645485 }
                 ];
                 const measurements = [
-                    { well_id: 'well-001', timestamp: new Date('2025-03-15T10:00:00Z'), water_level: 15.23, operator_id: 'sample_user' },
+                    { well_id: 'well-001', timestamp: new Date('2025-03-15T10:00:00Z'), water_level_from_ref: 15.73, water_level_from_ground: 15.23, operator_id: 'sample_user' },
                 ];
 
                 const { measurementsCollectionRef } = getCollections();
@@ -406,7 +455,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             const { wellsCollectionRef } = getCollections();
             unsubscribeWells = onSnapshot(wellsCollectionRef, (snapshot) => {
                 const wells = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                allWellsCache = wells; // Update cache for sorting
+                allWellsCache = wells; 
                 updateMapMarkers(wells);
             }, (error) => {
                 console.error("Error listening for well updates:", error);
@@ -429,7 +478,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 wellMarkers[well.id] = marker; 
             });
 
-            if (Object.keys(wellMarkers).length > 0) {
+            if (Object.keys(wellMarkers).length > 0 && map.getZoom() < 5) {
                  map.fitBounds(wellMarkersLayer.getBounds(), { padding: [50, 50] });
             }
         }
@@ -460,8 +509,9 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             document.getElementById('well-name').textContent = well.name;
             document.getElementById('well-id-details').textContent = well.id;
             document.getElementById('well-kouji-bango-details').textContent = well.kouji_bango || 'N/A';
+            document.getElementById('well-reference-point-height-details').textContent = well.reference_point_height != null ? well.reference_point_height.toFixed(2) : 'N/A';
             document.getElementById('well-address').textContent = well.address || 'N/A';
-            document.getElementById('well-elevation').textContent = well.elevation || 'N/A';
+            document.getElementById('well-elevation').textContent = well.elevation != null ? well.elevation.toFixed(2) : 'N/A';
             
             panel.classList.remove('slide-out');
             panel.classList.add('slide-in');
@@ -500,20 +550,23 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
 
             measurements.forEach(m => {
                 const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-3 bg-white border rounded-md';
+                li.className = 'p-3 bg-white border rounded-md';
                 const date = new Date(m.timestamp).toLocaleString('ja-JP');
                 const operator = m.operator_id ? m.operator_id.substring(0,8) : 'N/A';
+                const groundLevel = m.water_level_from_ground != null ? m.water_level_from_ground.toFixed(2) : '計算不可';
 
                 li.innerHTML = `
-                    <div>
-                        <p class="font-semibold text-gray-800">${m.water_level.toFixed(2)} m</p>
+                    <div class="flex-grow">
+                        <p class="font-semibold text-gray-800">${groundLevel} m (地表から)</p>
                         <p class="text-sm text-gray-500">${date}</p>
                     </div>
-                    <div class="text-xs text-gray-400" title="測定者: ${m.operator_id}">
+                    <div class="text-xs text-gray-400 mr-4" title="測定者: ${m.operator_id}">
                         ${operator}
                     </div>
+                    <button class="edit-measurement-btn text-blue-500 hover:text-blue-700" data-measurement-id="${m.id}">修正</button>
                 `;
                 listEl.appendChild(li);
+                li.querySelector('.edit-measurement-btn').addEventListener('click', () => openEditMeasurementModal(m));
             });
         }
         
@@ -521,7 +574,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             const ctx = document.getElementById('water-level-chart').getContext('2d');
             const sortedMeasurements = [...measurements].sort((a,b) => a.timestamp - b.timestamp);
             const labels = sortedMeasurements.map(m => new Date(m.timestamp).toLocaleDateString('ja-JP'));
-            const data = sortedMeasurements.map(m => m.water_level);
+            const data = sortedMeasurements.map(m => m.water_level_from_ground);
 
             if (waterLevelChart) {
                 waterLevelChart.destroy();
@@ -531,7 +584,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: '水位 (m)',
+                        label: '地表からの水位 (m)',
                         data: data,
                         borderColor: 'rgb(59, 130, 246)',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -557,17 +610,21 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // =================================================================================
         async function handleAddMeasurement() {
             const inputEl = document.getElementById('water-level-input');
-            const waterLevel = parseFloat(inputEl.value);
+            const waterLevelFromRef = parseFloat(inputEl.value);
 
-            if (!currentWell || isNaN(waterLevel)) {
+            if (!currentWell || isNaN(waterLevelFromRef)) {
                 alert('有効な水位を入力してください。');
                 return;
             }
+            
+            const refHeight = currentWell.reference_point_height || 0;
+            const waterLevelFromGround = waterLevelFromRef - refHeight;
 
             const measurement = {
                 well_id: currentWell.id,
                 timestamp: serverTimestamp(),
-                water_level: waterLevel,
+                water_level_from_ref: waterLevelFromRef,
+                water_level_from_ground: waterLevelFromGround,
                 operator_id: userId
             };
 
@@ -591,12 +648,15 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         const importModal = document.getElementById('import-modal');
         const openImportModalBtn = document.getElementById('open-import-modal-btn');
         const exportCsvBtn = document.getElementById('export-csv-btn');
-        const addWellModal = document.getElementById('add-well-modal');
+        const wellFormModal = document.getElementById('well-form-modal');
         const openAddWellModalBtn = document.getElementById('open-add-well-modal-btn');
         const deleteWellBtn = document.getElementById('delete-well-btn');
         const deleteConfirmModal = document.getElementById('delete-confirm-modal');
         const wellListModal = document.getElementById('well-list-modal');
         const openWellListModalBtn = document.getElementById('open-well-list-modal-btn');
+        const editMeasurementModal = document.getElementById('edit-measurement-modal');
+        const editWellBtn = document.getElementById('edit-well-btn');
+        const locateMeBtn = document.getElementById('locate-me-btn');
 
         // --- インポート関連 ---
         openImportModalBtn.addEventListener('click', () => importModal.classList.remove('modal-hidden'));
@@ -607,31 +667,55 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // --- エクスポート関連 ---
         exportCsvBtn.addEventListener('click', handleExportCSV);
 
-        // --- 井戸追加関連 ---
-        openAddWellModalBtn.addEventListener('click', () => {
-            document.getElementById('new-well-id').value = `well-${Date.now()}`;
-            addWellModal.classList.remove('modal-hidden');
-        });
-        document.getElementById('close-add-well-modal-btn').addEventListener('click', () => addWellModal.classList.add('modal-hidden'));
-        document.getElementById('save-new-well-btn').addEventListener('click', handleSaveNewWell);
+        // --- 井戸追加・編集関連 ---
+        openAddWellModalBtn.addEventListener('click', () => openWellForm('add'));
+        editWellBtn.addEventListener('click', () => openWellForm('edit', currentWell));
+        document.getElementById('close-well-form-modal-btn').addEventListener('click', () => wellFormModal.classList.add('modal-hidden'));
+        document.getElementById('save-well-btn').addEventListener('click', handleSaveWell);
         document.getElementById('select-location-btn').addEventListener('click', handleSelectLocationOnMap);
 
         // --- 井戸削除関連 ---
-        deleteWellBtn.addEventListener('click', () => deleteConfirmModal.classList.remove('modal-hidden'));
-        document.getElementById('cancel-delete-btn').addEventListener('click', () => deleteConfirmModal.classList.add('modal-hidden'));
-        document.getElementById('confirm-delete-btn').addEventListener('click', handleDeleteWell);
+        deleteWellBtn.addEventListener('click', () => {
+            showDeleteConfirm({
+                title: 'この井戸を削除しますか？',
+                message: `井戸「${currentWell.name}」と、関連する全ての測定データが永久に削除されます。この操作は元に戻せません。`,
+                handler: handleDeleteWell
+            });
+        });
+        document.getElementById('cancel-delete-btn').addEventListener('click', () => {
+            deleteConfirmModal.classList.add('modal-hidden');
+            currentDeleteHandler = null;
+        });
+        document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+            if (typeof currentDeleteHandler === 'function') {
+                currentDeleteHandler();
+            }
+        });
 
         // --- 井戸一覧関連 ---
         openWellListModalBtn.addEventListener('click', handleOpenWellList);
         document.getElementById('close-well-list-modal-btn').addEventListener('click', () => wellListModal.classList.add('modal-hidden'));
         document.getElementById('sort-by-name-btn').addEventListener('click', () => renderWellList('name'));
         document.getElementById('sort-by-kouji-btn').addEventListener('click', () => renderWellList('kouji_bango'));
+        document.getElementById('well-list-container').addEventListener('change', (e) => {
+            if(e.target.matches('.well-checkbox')) {
+                const checkedCount = document.querySelectorAll('.well-checkbox:checked').length;
+                document.getElementById('delete-selected-wells-btn').classList.toggle('hidden', checkedCount === 0);
+            }
+        });
+        document.getElementById('delete-selected-wells-btn').addEventListener('click', handleBulkDelete);
+
+        // --- データ修正関連 ---
+        document.getElementById('close-edit-measurement-modal-btn').addEventListener('click', () => editMeasurementModal.classList.add('modal-hidden'));
+        document.getElementById('save-edited-measurement-btn').addEventListener('click', handleUpdateMeasurement);
+
+        // --- 現在地表示関連 ---
+        locateMeBtn.addEventListener('click', handleLocateMe);
 
         // --- 実装 ---
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(e) {
                 const text = e.target.result;
@@ -650,13 +734,11 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         function parseCSV(text) {
             const lines = text.trim().split(/\r?\n/);
             if (lines.length < 2) throw new Error("CSVファイルにデータがありません。");
-            
             const header = lines[0].split(',').map(h => h.trim());
             const requiredHeaders = ['well_id', 'well_name', 'lat', 'lng'];
             for(const req of requiredHeaders){
                 if(!header.includes(req)) throw new Error(`必須ヘッダーが見つかりません: ${req}`);
             }
-
             return lines.slice(1).map(line => {
                 const values = line.split(',');
                 const obj = {};
@@ -679,22 +761,19 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                  const lat = parseFloat(row.lat);
                 const lng = parseFloat(row.lng);
                 const elevation = row.elevation ? parseFloat(row.elevation) : null;
+                const refHeight = row.reference_point_height ? parseFloat(row.reference_point_height) : 0;
                 
-                if (isNaN(lat) || isNaN(lng)) {
-                    console.warn(`無効な座標です。スキップします: ${row.well_id}`);
-                    return;
-                }
+                if (isNaN(lat) || isNaN(lng)) return;
 
                 const wellData = {
-                    id: row.well_id,
                     name: row.well_name,
                     kouji_bango: row.kouji_bango || '',
-                    lat: lat,
-                    lng: lng,
+                    reference_point_height: isNaN(refHeight) ? 0 : refHeight,
+                    lat, lng,
                     address: row.address || '',
                     elevation: isNaN(elevation) ? null : elevation
                 };
-                const docRef = doc(wellsCollectionRef, wellData.id);
+                const docRef = doc(wellsCollectionRef, row.well_id);
                 batch.set(docRef, wellData);
             });
 
@@ -711,20 +790,14 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         }
 
         async function handleExportCSV() {
-            if (!currentWell) {
-                alert('エクスポートする井戸が選択されていません。');
-                return;
-            }
-
+            if (!currentWell) return;
             const { measurementsCollectionRef } = getCollections();
             const q = query(measurementsCollectionRef, where("well_id", "==", currentWell.id));
             const querySnapshot = await getDocs(q);
             
             const measurements = querySnapshot.docs.map(doc => {
                 const data = doc.data();
-                if (data.timestamp && data.timestamp.toDate) {
-                    data.timestamp = data.timestamp.toDate();
-                }
+                if (data.timestamp && data.timestamp.toDate) data.timestamp = data.timestamp.toDate();
                 return data;
             }).sort((a,b) => a.timestamp - b.timestamp);
             
@@ -733,29 +806,26 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 return;
             }
 
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM for Excel
-            csvContent += "測定日時,地表からの水位(m),測定者ID\r\n";
-
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+            csvContent += "測定日時,基準点からの水位(m),地表からの水位(m),測定者ID\r\n";
             measurements.forEach(row => {
                 const date = new Date(row.timestamp).toLocaleString('ja-JP');
-                const level = row.water_level.toFixed(2);
+                const level_ref = row.water_level_from_ref != null ? row.water_level_from_ref.toFixed(2) : '';
+                const level_ground = row.water_level_from_ground != null ? row.water_level_from_ground.toFixed(2) : '';
                 const operator = row.operator_id || '';
-                csvContent += `"${date}",${level},"${operator}"\r\n`;
+                csvContent += `"${date}",${level_ref},${level_ground},"${operator}"\r\n`;
             });
-            
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
             link.setAttribute("download", `${currentWell.name}_測定履歴.csv`);
             document.body.appendChild(link);
-            
             link.click();
             document.body.removeChild(link);
         }
         
         function handleSelectLocationOnMap() {
-            addWellModal.classList.add('modal-hidden');
-
+            wellFormModal.classList.add('modal-hidden');
             const instruction = document.createElement('div');
             instruction.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-white text-gray-800 p-3 rounded-lg shadow-lg z-[1005]';
             instruction.innerHTML = 'マーカーをドラッグして位置を調整し、<br>左下のボタンで確定してください。';
@@ -774,30 +844,58 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                     return button;
                 },
             });
-
             const confirmButton = new ConfirmControl({ position: 'bottomleft' });
             map.addControl(confirmButton);
-
             const finalizeSelection = () => {
                 const pos = tempMarker.getLatLng();
-                document.getElementById('new-well-lat').value = pos.lat.toFixed(6);
-                document.getElementById('new-well-lng').value = pos.lng.toFixed(6);
+                document.getElementById('well-form-lat').value = pos.lat.toFixed(6);
+                document.getElementById('well-form-lng').value = pos.lng.toFixed(6);
                 map.removeControl(confirmButton);
                 map.removeLayer(tempMarker);
                 if(document.body.contains(instruction)) document.body.removeChild(instruction);
-                addWellModal.classList.remove('modal-hidden');
+                wellFormModal.classList.remove('modal-hidden');
             }
         }
+
+        function openWellForm(mode, wellData = null) {
+            const form = document.getElementById('well-form');
+            form.reset();
+            const title = document.getElementById('well-form-title');
+            const idInput = document.getElementById('well-form-id');
+            const modeInput = document.getElementById('well-form-mode');
+            
+            if (mode === 'add') {
+                title.textContent = '新規井戸の追加';
+                modeInput.value = 'add';
+                idInput.value = `well-${Date.now()}`;
+                idInput.readOnly = false;
+            } else if (mode === 'edit' && wellData) {
+                title.textContent = '井戸情報の修正';
+                modeInput.value = 'edit';
+                idInput.value = wellData.id;
+                idInput.readOnly = true;
+                document.getElementById('well-form-name').value = wellData.name || '';
+                document.getElementById('well-form-kouji-bango').value = wellData.kouji_bango || '';
+                document.getElementById('well-form-reference-point-height').value = wellData.reference_point_height || 0;
+                document.getElementById('well-form-lat').value = wellData.lat || '';
+                document.getElementById('well-form-lng').value = wellData.lng || '';
+                document.getElementById('well-form-address').value = wellData.address || '';
+                document.getElementById('well-form-elevation').value = wellData.elevation || '';
+            }
+            wellFormModal.classList.remove('modal-hidden');
+        }
         
-        async function handleSaveNewWell() {
-            const id = document.getElementById('new-well-id').value.trim();
-            const name = document.getElementById('new-well-name').value.trim();
-            const kouji_bango = document.getElementById('new-well-kouji-bango').value.trim();
-            const lat = parseFloat(document.getElementById('new-well-lat').value);
-            const lng = parseFloat(document.getElementById('new-well-lng').value);
-            const address = document.getElementById('new-well-address').value.trim();
-            const elevation = document.getElementById('new-well-elevation').value.trim();
-            const errorDiv = document.getElementById('add-well-error');
+        async function handleSaveWell() {
+            const mode = document.getElementById('well-form-mode').value;
+            const id = document.getElementById('well-form-id').value.trim();
+            const name = document.getElementById('well-form-name').value.trim();
+            const kouji_bango = document.getElementById('well-form-kouji-bango').value.trim();
+            const reference_point_height = document.getElementById('well-form-reference-point-height').value.trim();
+            const lat = parseFloat(document.getElementById('well-form-lat').value);
+            const lng = parseFloat(document.getElementById('well-form-lng').value);
+            const address = document.getElementById('well-form-address').value.trim();
+            const elevation = document.getElementById('well-form-elevation').value.trim();
+            const errorDiv = document.getElementById('well-form-error');
             
             errorDiv.textContent = '';
             if (!id || !name || isNaN(lat) || isNaN(lng)) {
@@ -805,8 +903,9 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 return;
             }
 
-            const newWell = {
+            const wellData = {
                 name, kouji_bango, lat, lng, address,
+                reference_point_height: reference_point_height ? parseFloat(reference_point_height) : 0,
                 elevation: elevation ? parseFloat(elevation) : null
             };
             
@@ -814,45 +913,70 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             const docRef = doc(wellsCollectionRef, id);
 
             try {
-                await setDoc(docRef, newWell);
-                console.log('新規井戸を保存しました:', newWell);
-                addWellModal.classList.add('modal-hidden');
-                document.getElementById('add-well-form').reset();
+                if (mode === 'add') {
+                    const existingDoc = await getDoc(docRef);
+                    if (existingDoc.exists()) {
+                         errorDiv.textContent = 'エラー: この井戸IDは既に使用されています。';
+                         return;
+                    }
+                }
+                await setDoc(docRef, wellData, { merge: mode === 'edit' });
+                console.log('井戸情報を保存しました:', wellData);
+                wellFormModal.classList.add('modal-hidden');
+                if (mode === 'edit') {
+                    closePanel();
+                    openWellDetailsPanel({id, ...wellData});
+                }
             } catch(e) {
                 errorDiv.textContent = `データベースエラー: ${e.message}`;
             }
         }
 
+        async function handleBulkDelete() {
+            const checkedBoxes = document.querySelectorAll('.well-checkbox:checked');
+            if (checkedBoxes.length === 0) return;
+
+            showDeleteConfirm({
+                title: `${checkedBoxes.length}件の井戸を削除しますか？`,
+                message: '選択された全ての井戸と、それらに関連する全ての測定データが永久に削除されます。この操作は元に戻せません。',
+                handler: async () => {
+                    const idsToDelete = Array.from(checkedBoxes).map(cb => cb.value);
+                    await deleteWells(idsToDelete);
+                    wellListModal.classList.add('modal-hidden');
+                }
+            });
+        }
+
         async function handleDeleteWell() {
             if (!currentWell) return;
+            await deleteWells([currentWell.id]);
+            closePanel();
+        }
 
-            const wellIdToDelete = currentWell.id;
+        async function deleteWells(wellIds) {
             const { wellsCollectionRef, measurementsCollectionRef } = getCollections();
-
             const batch = writeBatch(db);
 
-            const wellDocRef = doc(wellsCollectionRef, wellIdToDelete);
-            batch.delete(wellDocRef);
-
-            const q = query(measurementsCollectionRef, where("well_id", "==", wellIdToDelete));
-            const snapshot = await getDocs(q);
-            snapshot.forEach(doc => {
-                batch.delete(doc.ref);
-            });
+            for (const id of wellIds) {
+                batch.delete(doc(wellsCollectionRef, id));
+                const q = query(measurementsCollectionRef, where("well_id", "==", id));
+                const snapshot = await getDocs(q);
+                snapshot.forEach(doc => batch.delete(doc.ref));
+            }
             
             try {
                 await batch.commit();
-                console.log(`井戸 ${wellIdToDelete} と関連データを削除しました。`);
+                console.log(`${wellIds.length}件の井戸を削除しました。`);
                 deleteConfirmModal.classList.add('modal-hidden');
-                closePanel();
             } catch (e) {
-                console.error('削除処理中にエラーが発生しました:', e);
-                alert('削除中にエラーが発生しました。');
+                 alert('削除中にエラーが発生しました。');
+                 console.error(e);
             }
         }
 
+
         function handleOpenWellList() {
-            renderWellList('name'); // デフォルトは井戸名順
+            renderWellList('name');
             wellListModal.classList.remove('modal-hidden');
         }
 
@@ -889,18 +1013,21 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             } else {
                 sortedWells.forEach(well => {
                     const li = document.createElement('li');
-                    li.className = 'p-3 hover:bg-gray-100 rounded-md cursor-pointer border-b';
+                    li.className = 'p-3 hover:bg-gray-100 rounded-md flex items-center space-x-4 border-b';
                     const koujiDisplay = well.kouji_bango ? `<p class="text-xs text-green-700 font-semibold">工事番号: ${well.kouji_bango}</p>` : '';
                     li.innerHTML = `
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <p class="font-semibold text-gray-800">${well.name}</p>
-                                <p class="text-sm text-gray-500">${well.id}</p>
+                        <input type="checkbox" value="${well.id}" class="well-checkbox h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <div class="flex-grow cursor-pointer" data-well-id="${well.id}">
+                             <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="font-semibold text-gray-800">${well.name}</p>
+                                    <p class="text-sm text-gray-500">${well.id}</p>
+                                </div>
+                                ${koujiDisplay}
                             </div>
-                            ${koujiDisplay}
                         </div>
                     `;
-                    li.addEventListener('click', () => jumpToWell(well));
+                    li.querySelector('[data-well-id]').addEventListener('click', () => jumpToWell(well));
                     listContainer.appendChild(li);
                 });
             }
@@ -908,7 +1035,6 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
 
         function jumpToWell(well) {
             wellListModal.classList.add('modal-hidden');
-
             if (well) {
                 map.flyTo([well.lat, well.lng], 16);
                 const marker = wellMarkers[well.id];
@@ -917,13 +1043,102 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 }
             }
         }
+
+        function openEditMeasurementModal(measurement) {
+            const modal = document.getElementById('edit-measurement-modal');
+            document.getElementById('edit-measurement-id').value = measurement.id;
+            document.getElementById('edit-measurement-level').value = measurement.water_level_from_ref;
+            
+            const date = new Date(measurement.timestamp);
+            date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+            document.getElementById('edit-measurement-time').value = date.toISOString().slice(0, 16);
+
+            modal.classList.remove('modal-hidden');
+        }
+
+        async function handleUpdateMeasurement() {
+            const id = document.getElementById('edit-measurement-id').value;
+            const levelFromRef = parseFloat(document.getElementById('edit-measurement-level').value);
+            const timeStr = document.getElementById('edit-measurement-time').value;
+
+            if (!id || isNaN(levelFromRef) || !timeStr) {
+                alert('有効な値を入力してください。');
+                return;
+            }
+            
+            const refHeight = currentWell.reference_point_height || 0;
+            const levelFromGround = levelFromRef - refHeight;
+
+            const timestamp = Timestamp.fromDate(new Date(timeStr));
+            const { measurementsCollectionRef } = getCollections();
+            const docRef = doc(measurementsCollectionRef, id);
+
+            try {
+                await updateDoc(docRef, {
+                    water_level_from_ref: levelFromRef,
+                    water_level_from_ground: levelFromGround,
+                    timestamp: timestamp
+                });
+                console.log('データを更新しました。');
+                document.getElementById('edit-measurement-modal').classList.add('modal-hidden');
+            } catch (e) {
+                alert('データの更新に失敗しました。');
+                console.error(e);
+            }
+        }
+        
+        function showDeleteConfirm(options) {
+            document.getElementById('delete-confirm-title').textContent = options.title;
+            document.getElementById('delete-confirm-message').textContent = options.message;
+            currentDeleteHandler = options.handler;
+            deleteConfirmModal.classList.remove('modal-hidden');
+        }
+
+        function handleLocateMe() {
+            if (!navigator.geolocation) {
+                alert('お使いのブラウザは位置情報サービスに対応していません。');
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    map.flyTo([latitude, longitude], 16);
+                    if (userLocationMarker) {
+                        userLocationMarker.setLatLng([latitude, longitude]);
+                    } else {
+                        userLocationMarker = L.circleMarker([latitude, longitude], {
+                            radius: 8,
+                            color: '#1d4ed8',
+                            fillColor: '#3b82f6',
+                            fillOpacity: 0.8
+                        }).addTo(map);
+                    }
+                     userLocationMarker.bindPopup('あなたの現在地').openPopup();
+                },
+                (err) => {
+                    console.warn(`ERROR(${err.code}): ${err.message}`);
+                    alert('現在地の取得に失敗しました。ブラウザの位置情報サービスが有効になっているか確認してください。');
+                }
+            );
+        }
         
         // =================================================================================
         // アプリケーションの起動
         // =================================================================================
         window.onload = async () => {
             await initializeFirebase();
+            setupWellListListeners();
         };
+
+        function setupWellListListeners() {
+             document.getElementById('well-list-container').addEventListener('change', (e) => {
+                if(e.target.matches('.well-checkbox')) {
+                    const checkedCount = document.querySelectorAll('.well-checkbox:checked').length;
+                    document.getElementById('delete-selected-wells-btn').classList.toggle('hidden', checkedCount === 0);
+                }
+            });
+            document.getElementById('delete-selected-wells-btn').addEventListener('click', handleBulkDelete);
+        }
 
     </script>
     
