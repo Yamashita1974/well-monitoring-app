@@ -37,6 +37,17 @@
         .modal-hidden {
             display: none;
         }
+        /* 井戸ラベルのスタイル */
+        .well-label {
+            background-color: rgba(255, 255, 255, 0.85);
+            border-color: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-weight: bold;
+            font-size: 12px;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -46,6 +57,11 @@
 
     <!-- UIボタンコンテナ -->
     <div class="fixed bottom-4 right-4 z-[1001] flex flex-col items-end space-y-2">
+        <button id="toggle-labels-btn" class="bg-white text-gray-700 p-4 rounded-full shadow-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" title="ラベル表示切替">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+            </svg>
+        </button>
         <button id="locate-me-btn" class="bg-white text-gray-700 p-4 rounded-full shadow-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" title="現在地へ移動">
              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -339,6 +355,7 @@ well-001,A-1観測井,35.681,139.767,東京都千代田区,25.5,2025-A-01,0.5</p
         let allWellsCache = [];
         let currentDeleteHandler = null;
         let userLocationMarker = null;
+        let labelsVisible = false;
         
         // =================================================================================
         // Firebase 初期化と認証
@@ -474,6 +491,18 @@ well-001,A-1観測井,35.681,139.767,東京都千代田区,25.5,2025-A-01,0.5</p
                 marker.bindPopup(`<b>${well.name}</b>`).on('click', () => {
                     openWellDetailsPanel(well);
                 });
+
+                marker.bindTooltip(well.name, {
+                    permanent: false,
+                    direction: 'top',
+                    offset: [0, -15],
+                    className: 'well-label'
+                });
+                
+                if (labelsVisible) {
+                    marker.openTooltip();
+                }
+
                 wellMarkersLayer.addLayer(marker);
                 wellMarkers[well.id] = marker; 
             });
@@ -577,7 +606,7 @@ well-001,A-1観測井,35.681,139.767,東京都千代田区,25.5,2025-A-01,0.5</p
 
             measurements.forEach(m => {
                 const li = document.createElement('li');
-                li.className = 'p-3 bg-white border rounded-md';
+                li.className = 'p-3 bg-white border rounded-md flex items-center';
                 const date = new Date(m.timestamp).toLocaleString('ja-JP');
                 const operator = m.operator_id ? m.operator_id.substring(0,8) : 'N/A';
                 const groundLevel = m.water_level_from_ground != null ? m.water_level_from_ground.toFixed(2) : '計算不可';
@@ -684,6 +713,7 @@ well-001,A-1観測井,35.681,139.767,東京都千代田区,25.5,2025-A-01,0.5</p
         const editMeasurementModal = document.getElementById('edit-measurement-modal');
         const editWellBtn = document.getElementById('edit-well-btn');
         const locateMeBtn = document.getElementById('locate-me-btn');
+        const toggleLabelsBtn = document.getElementById('toggle-labels-btn');
 
         // --- インポート関連 ---
         openImportModalBtn.addEventListener('click', () => importModal.classList.remove('modal-hidden'));
@@ -736,8 +766,9 @@ well-001,A-1観測井,35.681,139.767,東京都千代田区,25.5,2025-A-01,0.5</p
         document.getElementById('close-edit-measurement-modal-btn').addEventListener('click', () => editMeasurementModal.classList.add('modal-hidden'));
         document.getElementById('save-edited-measurement-btn').addEventListener('click', handleUpdateMeasurement);
 
-        // --- 現在地表示関連 ---
+        // --- 現在地表示・ラベル表示関連 ---
         locateMeBtn.addEventListener('click', handleLocateMe);
+        toggleLabelsBtn.addEventListener('click', handleToggleLabels);
 
         // --- 実装 ---
         function handleFileSelect(event) {
@@ -1147,6 +1178,19 @@ well-001,A-1観測井,35.681,139.767,東京都千代田区,25.5,2025-A-01,0.5</p
                     alert('現在地の取得に失敗しました。ブラウザの位置情報サービスが有効になっているか確認してください。');
                 }
             );
+        }
+
+        function handleToggleLabels() {
+            labelsVisible = !labelsVisible;
+            toggleLabelsBtn.classList.toggle('bg-blue-200', labelsVisible);
+
+            wellMarkersLayer.eachLayer(marker => {
+                if (labelsVisible) {
+                    marker.openTooltip();
+                } else {
+                    marker.closeTooltip();
+                }
+            });
         }
         
         // =================================================================================
