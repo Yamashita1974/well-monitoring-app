@@ -4,32 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>水位観測アプリ</title>
-    
-    <!-- PWAマニフェスト -->
     <link rel="manifest" href="manifest.json">
-
-    <!-- スタイルシート -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-     crossorigin=""/>
-    
-    <!-- ライブラリ -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <style>
         #map { height: 100vh; }
         .slide-in { transform: translateX(0%); transition: transform 0.3s ease-in-out; }
         .slide-out { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
         .modal-hidden { display: none; }
         .custom-marker-icon { background: none; border: none; }
-        .leaflet-tooltip-permanent {
-            background-color: rgba(255, 255, 255, 0.8); border: 1px solid #ccc;
-            border-radius: 4px; padding: 4px 8px; font-weight: bold;
-        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
@@ -38,6 +23,7 @@
     <div id="project-modal" class="modal-hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[2000]">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
             <h2 class="text-2xl font-bold mb-4">プロジェクト選択</h2>
+            <p class="text-gray-600 mb-6">作業するプロジェクトを選択または新規作成してください。</p>
             <div class="mb-4">
                 <label for="project-id-input" class="block text-sm font-medium text-gray-700">プロジェクトID</label>
                 <input type="text" id="project-id-input" placeholder="例: tokyo-site-2025" class="mt-1 block w-full px-3 py-2 border rounded-md">
@@ -57,34 +43,29 @@
             <button id="switch-project-btn" class="text-sm text-blue-600 hover:underline">切り替え</button>
         </div>
         <div class="fixed bottom-4 right-4 z-[1001] flex flex-col space-y-2">
-            <!-- (ボタン) -->
+            <button id="toggle-labels-btn" class="bg-purple-600 text-white p-4 rounded-full shadow-lg" title="井戸名表示"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg></button>
+            <button id="open-add-well-modal-btn" class="bg-green-600 text-white p-4 rounded-full shadow-lg" title="新規井戸追加"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg></button>
         </div>
         <div id="well-details-panel" class="fixed top-0 right-0 h-full md:w-1/3 bg-white shadow-lg z-[1001] p-6 overflow-y-auto slide-out"></div>
-        <div id="offline-indicator" class="hidden fixed bottom-4 left-4 bg-yellow-500 text-white text-sm py-2 px-4 rounded-full z-[1002]"><p>オフライン</p></div>
+        <div id="add-well-modal" class="modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-[1003] flex items-center justify-center"><div class="bg-white p-6 rounded-lg w-full max-w-lg"></div></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDocs, onSnapshot, collection, writeBatch, enableNetwork, disableNetwork } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDocs, onSnapshot, collection, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // アプリケーションの全ロジックを管理するAppオブジェクト
         const App = {
-            // --- 状態変数 ---
             db: null, auth: null, userId: null, currentProjectId: null,
             unsubscribeWells: null, map: null, wellMarkersLayer: null,
-            
-            // --- DOM要素の参照 ---
             dom: {},
 
-            // --- 1. アプリケーションのエントリーポイント ---
             async start() {
                 console.log("App starting...");
-                this.bindDOMElements(); // 最初にDOM要素を確保
+                this.bindDOMElements();
                 await this.initializeFirebase();
             },
 
-            // --- 2. Firebaseの初期化と認証 ---
             async initializeFirebase() {
                 try {
                     const firebaseConfig = {
@@ -99,35 +80,42 @@
                     this.db = getFirestore(app);
                     this.auth = getAuth(app);
                     
-                    // ★★★★★ 解決策の核心 ★★★★★
-                    // 認証状態の変化を監視し、認証が完了してから次のステップに進む
-                    onAuthStateChanged(this.auth, (user) => {
-                        if (user && !this.userId) { // 一度だけ実行
-                            console.log("Authenticated successfully. UID:", user.uid);
-                            this.userId = user.uid;
-                            this.initializeAppLogic(); // 認証後にUIロジックを開始
-                        }
-                    });
-
                     await signInAnonymously(this.auth);
+                    this.userId = await this.waitForAuth();
+                    
+                    console.log("Authenticated. UID:", this.userId);
+                    this.initializeAppLogic();
 
                 } catch (error) {
-                    console.error("Firebase initialization failed:", error);
-                    alert(`Firebase初期化エラー: ${error.message}`);
+                    console.error("Critical Firebase Error:", error);
+                    alert(`Firebase初期化/認証エラー: ${error.message}`);
                 }
             },
 
-            // --- 3. UIの準備とプロジェクト選択 ---
+            waitForAuth() {
+                return new Promise((resolve, reject) => {
+                    const unsubscribe = onAuthStateChanged(this.auth, user => {
+                        if (user) {
+                            unsubscribe();
+                            resolve(user.uid);
+                        }
+                    });
+                    setTimeout(() => {
+                        unsubscribe();
+                        reject(new Error("Authentication timed out."));
+                    }, 10000); // 10秒のタイムアウト
+                });
+            },
+
             initializeAppLogic() {
-                console.log("Initializing app logic and UI...");
+                console.log("Initializing UI and event listeners...");
                 this.setupEventListeners();
-                this.initMap(); // 地図は一度だけ初期化
+                this.initMap();
                 const recentProjects = JSON.parse(localStorage.getItem('recentProjects') || '[]');
                 this.updateRecentProjectsList(recentProjects);
-                this.showProjectModal(); // 必ずプロジェクト選択から開始
+                this.showProjectModal();
             },
             
-            // --- 4. プロジェクトの開始 ---
             async startProject(id) {
                 if (!id) {
                     alert('プロジェクトIDが無効です。');
@@ -136,30 +124,23 @@
                 
                 console.log(`Starting project: '${id}'`);
                 this.resetAppState();
-                
                 this.currentProjectId = id;
                 this.saveProjectHistory(id);
 
                 try {
-                    // データベースアクセスはここでのみ行う
                     await this.loadProjectData();
-                    
-                    // UIの更新
                     this.dom.currentProjectIdDisplay.textContent = this.currentProjectId;
                     this.dom.mainContent.classList.remove('invisible');
                     this.hideProjectModal();
-                    
                     console.log(`Project '${id}' started successfully.`);
-
                 } catch (error) {
                     console.error("Failed to start project:", error);
-                    alert(`プロジェクトの読み込みに失敗しました。\n\nエラー: ${error.message}\n\nFirestoreのセキュリティルールが正しく設定されているか確認してください。`);
+                    alert(`プロジェクトの読み込みに失敗しました。\n\nエラー: ${error.message}`);
                     this.currentProjectId = null;
                     this.showProjectModal();
                 }
             },
 
-            // --- ヘルパー関数群 ---
             bindDOMElements() {
                 this.dom = {
                     projectModal: document.getElementById('project-modal'),
@@ -169,6 +150,7 @@
                     currentProjectIdDisplay: document.getElementById('current-project-id-display'),
                     recentProjectsList: document.getElementById('recent-projects-list'),
                     projectIdInput: document.getElementById('project-id-input'),
+                    addWellBtn: document.getElementById('open-add-well-modal-btn'),
                 };
             },
             
@@ -178,6 +160,7 @@
                     this.startProject(id);
                 });
                 this.dom.switchProjectBtn.addEventListener('click', () => this.showProjectModal());
+                this.dom.addWellBtn.addEventListener('click', () => this.showAddWellModal());
             },
 
             resetAppState() {
@@ -232,7 +215,6 @@
                 }
                 return {
                     wells: collection(this.db, 'projects', this.currentProjectId, 'wells'),
-                    measurements: collection(this.db, 'projects', this.currentProjectId, 'measurements'),
                 };
             },
 
@@ -253,6 +235,7 @@
             },
 
             listenForWells() {
+                if (this.unsubscribeWells) this.unsubscribeWells();
                 const { wells } = this.getCollections();
                 this.unsubscribeWells = onSnapshot(wells, (snapshot) => {
                     const wellList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -281,9 +264,16 @@
                     this.map.fitBounds(this.wellMarkersLayer.getBounds(), { padding: [50, 50] });
                 }
             },
+            
+            showAddWellModal() {
+                // ここに井戸追加モーダルを表示するロジックを実装
+                console.log("井戸追加モーダルを表示します");
+                const modal = document.getElementById('add-well-modal');
+                modal.classList.remove('modal-hidden');
+                // モーダルの中身を動的に生成・表示
+            }
         };
 
-        // DOMの読み込みが完了したらアプリケーションを起動
         document.addEventListener('DOMContentLoaded', () => App.start());
     </script>
 </body>
