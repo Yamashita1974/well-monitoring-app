@@ -29,7 +29,7 @@
     </div>
     
     <!-- プロジェクト選択モーダル -->
-    <div id="project-modal" class="modal-hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[2000]">
+    <div id="project-modal" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[2000]">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
             <h2 class="text-2xl font-bold mb-4">プロジェクト選択</h2>
             <div class="mb-4">
@@ -63,7 +63,6 @@
         </div>
     </div>
     
-    <!-- ★★★★★ 解決策の核心 ★★★★★ デバッグパネル -->
     <div id="debug-panel" class="fixed bottom-0 left-0 bg-black bg-opacity-70 text-white text-xs p-2 z-[9999] font-mono"></div>
 
     <script type="module">
@@ -79,18 +78,11 @@
 
             setStatus(newStatus, error = null) {
                 this.status = newStatus;
-                console.log(`Status changed to: ${newStatus}`, error || '');
                 this.updateDebugPanel(error);
             },
-
             updateDebugPanel(error = null) {
                 if (!this.dom.debugPanel) return;
-                this.dom.debugPanel.innerHTML = `
-                    <strong>Status:</strong> ${this.status}<br>
-                    <strong>UserID:</strong> ${this.userId ? 'OK' : 'Pending'}<br>
-                    <strong>ProjectID:</strong> ${this.currentProjectId || 'None'}<br>
-                    ${error ? `<strong>Error:</strong> <span style="color: red;">${error.message}</span>` : ''}
-                `;
+                this.dom.debugPanel.innerHTML = `<strong>Status:</strong> ${this.status}<br><strong>UserID:</strong> ${this.userId ? 'OK' : 'Pending'}<br><strong>ProjectID:</strong> ${this.currentProjectId || 'None'}${error ? `<br><strong>Error:</strong> <span style="color: red;">${error.message}</span>` : ''}`;
             },
             
             async start() {
@@ -98,18 +90,10 @@
                 this.bindDOMElements();
                 await this.initializeFirebase();
             },
-
             async initializeFirebase() {
                 try {
                     this.setStatus('authenticating');
-                    const firebaseConfig = {
-                        apiKey: "AIzaSyAYovasyBOIls5q9ZVX7_HeJmeeDD9OcpU",
-                        authDomain: "idochousa2025.firebaseapp.com",
-                        projectId: "idochousa2025",
-                        storageBucket: "idochousa2025.appspot.com",
-                        messagingSenderId: "55272688318",
-                        appId: "1:55272688318:web:c665ace11cda1a9eeb2cef"
-                    };
+                    const firebaseConfig = { apiKey: "AIzaSyAYovasyBOIls5q9ZVX7_HeJmeeDD9OcpU", authDomain: "idochousa2025.firebaseapp.com", projectId: "idochousa2025", storageBucket: "idochousa2025.appspot.com", messagingSenderId: "55272688318", appId: "1:55272688318:web:c665ace11cda1a9eeb2cef" };
                     const app = initializeApp(firebaseConfig);
                     this.db = getFirestore(app);
                     this.auth = getAuth(app);
@@ -119,12 +103,10 @@
                     
                     this.setStatus('authenticated');
                     this.initializeAppLogic();
-
                 } catch (error) {
                     this.setStatus('error', error);
                 }
             },
-
             waitForAuth() {
                 return new Promise((resolve, reject) => {
                     const timeout = setTimeout(() => reject(new Error("Authentication timed out")), 10000);
@@ -141,7 +123,6 @@
                     });
                 });
             },
-
             initializeAppLogic() {
                 this.setStatus('project_selection');
                 this.setupEventListeners();
@@ -152,10 +133,7 @@
             },
             
             async startProject(id) {
-                if (!id) {
-                    alert('プロジェクトIDが無効です。');
-                    return;
-                }
+                if (!id) { return alert('プロジェクトIDが無効です。'); }
                 
                 this.resetAppState();
                 this.currentProjectId = id;
@@ -163,18 +141,15 @@
                 this.setStatus('loading_project');
 
                 try {
-                    const loadPromise = this.loadProjectData();
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error("Database load timed out.")), 15000)
-                    );
-                    
-                    await Promise.race([loadPromise, timeoutPromise]);
+                    await Promise.race([
+                        this.loadProjectData(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error("Database load timed out.")), 15000))
+                    ]);
                     
                     this.dom.currentProjectIdDisplay.textContent = this.currentProjectId;
                     this.dom.projectIndicator.classList.remove('hidden');
                     this.hideProjectModal();
                     this.setStatus('running');
-
                 } catch (error) {
                     this.setStatus('error', error);
                     alert(`プロジェクト読み込みエラー: ${error.message}`);
@@ -183,7 +158,6 @@
                 }
             },
 
-            // --- ヘルパー関数群 ---
             bindDOMElements() {
                 this.dom = {
                     projectModal: document.getElementById('project-modal'), startProjectBtn: document.getElementById('start-project-btn'),
@@ -222,19 +196,19 @@
                 await this.populateSampleData();
                 this.listenForWells();
             },
+            
+            // ★★★★★ 解決策の核心 ★★★★★
+            // UIの表示/非表示を直接的なスタイル操作で行う
             showProjectModal() {
                 this.setStatus('project_selection');
-                this.dom.projectModal.classList.remove('modal-hidden');
+                this.dom.projectModal.style.display = 'flex';
             },
             hideProjectModal() {
-                this.dom.projectModal.classList.add('modal-hidden');
+                this.dom.projectModal.style.display = 'none';
             },
+
             updateRecentProjectsList(projects) {
-                this.dom.recentProjectsList.innerHTML = '';
-                if(projects.length === 0) {
-                    this.dom.recentProjectsList.innerHTML = '<p class="text-gray-500 text-sm">履歴はありません。</p>';
-                    return;
-                }
+                this.dom.recentProjectsList.innerHTML = projects.length ? '' : '<p class="text-gray-500 text-sm">履歴はありません。</p>';
                 projects.forEach(id => {
                     const item = document.createElement('button');
                     item.className = 'w-full text-left p-2 bg-gray-100 hover:bg-gray-200 rounded-md';
@@ -260,8 +234,7 @@
             },
             listenForWells() {
                 if (this.unsubscribeWells) this.unsubscribeWells();
-                const { wells } = this.getCollections();
-                this.unsubscribeWells = onSnapshot(wells, (snapshot) => {
+                this.unsubscribeWells = onSnapshot(this.getCollections().wells, (snapshot) => {
                     const wellList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                     this.updateMapMarkers(wellList);
                 });
