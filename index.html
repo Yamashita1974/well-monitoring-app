@@ -14,16 +14,16 @@
         .slide-in { transform: translateX(0%); transition: transform 0.3s ease-in-out; }
         .slide-out { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
         .modal-hidden { display: none; }
+        .invisible { visibility: hidden; }
         .custom-marker-icon { background: none; border: none; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
     
-    <!-- 全てのHTML要素をここに記述 -->
+    <!-- プロジェクト選択モーダル -->
     <div id="project-modal" class="modal-hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[2000]">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
             <h2 class="text-2xl font-bold mb-4">プロジェクト選択</h2>
-            <p class="text-gray-600 mb-6">作業するプロジェクトを選択または新規作成してください。</p>
             <div class="mb-4">
                 <label for="project-id-input" class="block text-sm font-medium text-gray-700">プロジェクトID</label>
                 <input type="text" id="project-id-input" placeholder="例: tokyo-site-2025" class="mt-1 block w-full px-3 py-2 border rounded-md">
@@ -36,6 +36,7 @@
         </div>
     </div>
     
+    <!-- メインコンテンツ -->
     <div id="main-content" class="invisible">
         <div id="map"></div>
         <div id="project-indicator" class="fixed top-4 left-1/2 -translate-x-1/2 bg-white/90 p-2 rounded-lg shadow-lg z-[1001] flex items-center space-x-4">
@@ -43,17 +44,46 @@
             <button id="switch-project-btn" class="text-sm text-blue-600 hover:underline">切り替え</button>
         </div>
         <div class="fixed bottom-4 right-4 z-[1001] flex flex-col space-y-2">
-            <button id="toggle-labels-btn" class="bg-purple-600 text-white p-4 rounded-full shadow-lg" title="井戸名表示"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg></button>
             <button id="open-add-well-modal-btn" class="bg-green-600 text-white p-4 rounded-full shadow-lg" title="新規井戸追加"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg></button>
         </div>
-        <div id="well-details-panel" class="fixed top-0 right-0 h-full md:w-1/3 bg-white shadow-lg z-[1001] p-6 overflow-y-auto slide-out"></div>
-        <div id="add-well-modal" class="modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-[1003] flex items-center justify-center"><div class="bg-white p-6 rounded-lg w-full max-w-lg"></div></div>
     </div>
+    
+    <!-- 新規井戸追加モーダル -->
+    <div id="add-well-modal" class="modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-[1003] flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg w-full max-w-lg">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">新規井戸の追加</h3>
+            <form id="add-well-form" class="space-y-4">
+                <div>
+                    <label for="new-well-id" class="block text-sm">井戸ID (必須)</label>
+                    <input type="text" id="new-well-id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div>
+                    <label for="new-well-name" class="block text-sm">井戸名 (必須)</label>
+                    <input type="text" id="new-well-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="new-well-lat" class="block text-sm">緯度 (必須)</label>
+                        <input type="number" id="new-well-lat" step="any" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                    <div>
+                        <label for="new-well-lng" class="block text-sm">経度 (必須)</label>
+                        <input type="number" id="new-well-lng" step="any" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    </div>
+                </div>
+            </form>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="close-add-well-modal-btn" class="px-4 py-2 bg-gray-200 rounded-md">キャンセル</button>
+                <button id="save-new-well-btn" class="px-4 py-2 bg-green-600 text-white rounded-md">保存</button>
+            </div>
+        </div>
+    </div>
+
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDocs, onSnapshot, collection, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDocs, onSnapshot, collection, writeBatch, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const App = {
             db: null, auth: null, userId: null, currentProjectId: null,
@@ -61,7 +91,6 @@
             dom: {},
 
             async start() {
-                console.log("App starting...");
                 this.bindDOMElements();
                 await this.initializeFirebase();
             },
@@ -83,7 +112,6 @@
                     await signInAnonymously(this.auth);
                     this.userId = await this.waitForAuth();
                     
-                    console.log("Authenticated. UID:", this.userId);
                     this.initializeAppLogic();
 
                 } catch (error) {
@@ -99,16 +127,11 @@
                             unsubscribe();
                             resolve(user.uid);
                         }
-                    });
-                    setTimeout(() => {
-                        unsubscribe();
-                        reject(new Error("Authentication timed out."));
-                    }, 10000); // 10秒のタイムアウト
+                    }, reject);
                 });
             },
 
             initializeAppLogic() {
-                console.log("Initializing UI and event listeners...");
                 this.setupEventListeners();
                 this.initMap();
                 const recentProjects = JSON.parse(localStorage.getItem('recentProjects') || '[]');
@@ -122,17 +145,16 @@
                     return;
                 }
                 
-                console.log(`Starting project: '${id}'`);
                 this.resetAppState();
                 this.currentProjectId = id;
                 this.saveProjectHistory(id);
 
                 try {
                     await this.loadProjectData();
+                    
                     this.dom.currentProjectIdDisplay.textContent = this.currentProjectId;
                     this.dom.mainContent.classList.remove('invisible');
                     this.hideProjectModal();
-                    console.log(`Project '${id}' started successfully.`);
                 } catch (error) {
                     console.error("Failed to start project:", error);
                     alert(`プロジェクトの読み込みに失敗しました。\n\nエラー: ${error.message}`);
@@ -150,7 +172,11 @@
                     currentProjectIdDisplay: document.getElementById('current-project-id-display'),
                     recentProjectsList: document.getElementById('recent-projects-list'),
                     projectIdInput: document.getElementById('project-id-input'),
-                    addWellBtn: document.getElementById('open-add-well-modal-btn'),
+                    addWellModal: document.getElementById('add-well-modal'),
+                    openAddWellBtn: document.getElementById('open-add-well-modal-btn'),
+                    closeAddWellBtn: document.getElementById('close-add-well-modal-btn'),
+                    saveWellBtn: document.getElementById('save-new-well-btn'),
+                    addWellForm: document.getElementById('add-well-form'),
                 };
             },
             
@@ -160,7 +186,9 @@
                     this.startProject(id);
                 });
                 this.dom.switchProjectBtn.addEventListener('click', () => this.showProjectModal());
-                this.dom.addWellBtn.addEventListener('click', () => this.showAddWellModal());
+                this.dom.openAddWellBtn.addEventListener('click', () => this.showAddWellModal());
+                this.dom.closeAddWellBtn.addEventListener('click', () => this.hideAddWellModal());
+                this.dom.saveWellBtn.addEventListener('click', () => this.handleSaveNewWell());
             },
 
             resetAppState() {
@@ -169,11 +197,9 @@
             },
 
             saveProjectHistory(id) {
-                let recent = JSON.parse(localStorage.getItem('recentProjects') || '[]');
-                if (!recent.includes(id)) {
-                    recent.unshift(id);
-                    recent = recent.slice(0, 5);
-                }
+                let recent = JSON.parse(localStorage.getItem('recentProjects') || '[]').filter(p => p !== id);
+                recent.unshift(id);
+                recent = recent.slice(0, 5);
                 localStorage.setItem('recentProjects', JSON.stringify(recent));
                 localStorage.setItem('currentProjectId', id);
                 this.updateRecentProjectsList(recent);
@@ -213,9 +239,7 @@
                 if (!this.currentProjectId) {
                     throw new Error("Cannot get collections, Project ID is empty.");
                 }
-                return {
-                    wells: collection(this.db, 'projects', this.currentProjectId, 'wells'),
-                };
+                return { wells: collection(this.db, 'projects', this.currentProjectId, 'wells') };
             },
 
             async populateSampleData() {
@@ -223,9 +247,7 @@
                 const snapshot = await getDocs(wells);
                 if (snapshot.empty) {
                     const batch = writeBatch(this.db);
-                    const sampleWells = [
-                        { id: 'well-001', name: 'A-1観測井', lat: 35.681, lng: 139.767, color: '#3b82f6' },
-                    ];
+                    const sampleWells = [{ id: 'well-001', name: 'A-1観測井', lat: 35.681, lng: 139.767 }];
                     sampleWells.forEach(w => {
                         const { id, ...data } = w;
                         batch.set(doc(wells, id), data);
@@ -246,7 +268,7 @@
             initMap() {
                 if (this.map) return;
                 this.map = L.map('map').setView([35.681, 139.767], 10);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(this.map);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(this.map);
                 this.wellMarkersLayer = L.featureGroup().addTo(this.map);
             },
             
@@ -264,14 +286,40 @@
                     this.map.fitBounds(this.wellMarkersLayer.getBounds(), { padding: [50, 50] });
                 }
             },
-            
+
             showAddWellModal() {
-                // ここに井戸追加モーダルを表示するロジックを実装
-                console.log("井戸追加モーダルを表示します");
-                const modal = document.getElementById('add-well-modal');
-                modal.classList.remove('modal-hidden');
-                // モーダルの中身を動的に生成・表示
-            }
+                this.dom.addWellForm.reset();
+                document.getElementById('new-well-id').value = `well-${Date.now()}`;
+                this.dom.addWellModal.classList.remove('modal-hidden');
+            },
+
+            hideAddWellModal() {
+                this.dom.addWellModal.classList.add('modal-hidden');
+            },
+
+            async handleSaveNewWell() {
+                const id = document.getElementById('new-well-id').value.trim();
+                const name = document.getElementById('new-well-name').value.trim();
+                const lat = parseFloat(document.getElementById('new-well-lat').value);
+                const lng = parseFloat(document.getElementById('new-well-lng').value);
+
+                if (!id || !name || isNaN(lat) || isNaN(lng)) {
+                    alert('必須項目を全て入力してください。');
+                    return;
+                }
+                
+                const newWell = { name, lat, lng };
+                
+                try {
+                    const { wells } = this.getCollections();
+                    await setDoc(doc(wells, id), newWell);
+                    this.hideAddWellModal();
+                    alert('新規井戸を保存しました。');
+                } catch (error) {
+                    console.error("Error saving new well:", error);
+                    alert(`保存に失敗しました: ${error.message}`);
+                }
+            },
         };
 
         document.addEventListener('DOMContentLoaded', () => App.start());
