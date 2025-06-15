@@ -11,74 +11,57 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         #map { height: 100vh; }
-        .slide-in { transform: translateX(0%); transition: transform 0.3s ease-in-out; }
-        .slide-out { transform: translateX(100%); transition: transform 0.3s ease-in-out; }
         .modal-hidden { display: none; }
-        .invisible { visibility: hidden; }
-        .custom-marker-icon { background: none; border: none; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
     
-    <!-- プロジェクト選択モーダル -->
-    <div id="project-modal" class="modal-hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[2000]">
+    <!-- メインコンテンツ (最初から存在するがモーダルに隠されている) -->
+    <div id="main-content">
+        <div id="map"></div>
+        <div id="project-indicator" class="hidden fixed top-4 left-1/2 -translate-x-1/2 bg-white/90 p-2 rounded-lg shadow-lg z-[1001] flex items-center space-x-4">
+            <span class="font-semibold">プロジェクト: <span id="current-project-id-display"></span></span>
+            <button id="switch-project-btn" class="text-sm text-blue-600 hover:underline">切り替え</button>
+        </div>
+        <div class="fixed bottom-4 right-4 z-[1001] flex flex-col space-y-2">
+            <button id="open-add-well-modal-btn" class="bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700" title="新規井戸追加"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg></button>
+        </div>
+    </div>
+    
+    <!-- プロジェクト選択モーダル (最初は表示状態) -->
+    <div id="project-modal" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[2000]">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
             <h2 class="text-2xl font-bold mb-4">プロジェクト選択</h2>
             <div class="mb-4">
                 <label for="project-id-input" class="block text-sm font-medium text-gray-700">プロジェクトID</label>
-                <input type="text" id="project-id-input" placeholder="例: tokyo-site-2025" class="mt-1 block w-full px-3 py-2 border rounded-md">
+                <input type="text" id="project-id-input" placeholder="例: tokyo-site-2025" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
             </div>
-            <button id="start-project-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-bold">開始</button>
+            <button id="start-project-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-bold hover:bg-blue-700">開始</button>
             <div class="mt-6">
                 <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-3">最近使ったプロジェクト</h3>
                 <div id="recent-projects-list" class="space-y-2 max-h-32 overflow-y-auto"></div>
             </div>
         </div>
     </div>
-    
-    <!-- メインコンテンツ -->
-    <div id="main-content" class="invisible">
-        <div id="map"></div>
-        <div id="project-indicator" class="fixed top-4 left-1/2 -translate-x-1/2 bg-white/90 p-2 rounded-lg shadow-lg z-[1001] flex items-center space-x-4">
-            <span class="font-semibold">プロジェクト: <span id="current-project-id-display"></span></span>
-            <button id="switch-project-btn" class="text-sm text-blue-600 hover:underline">切り替え</button>
-        </div>
-        <div class="fixed bottom-4 right-4 z-[1001] flex flex-col space-y-2">
-            <button id="open-add-well-modal-btn" class="bg-green-600 text-white p-4 rounded-full shadow-lg" title="新規井戸追加"><svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg></button>
-        </div>
-    </div>
-    
-    <!-- 新規井戸追加モーダル -->
+
+    <!-- 新規井戸追加モーダル (最初は非表示) -->
     <div id="add-well-modal" class="modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-[1003] flex items-center justify-center">
-        <div class="bg-white p-6 rounded-lg w-full max-w-lg">
+        <div class="bg-white p-6 rounded-lg w-full max-w-lg shadow-lg">
             <h3 class="text-lg font-medium text-gray-900 mb-4">新規井戸の追加</h3>
             <form id="add-well-form" class="space-y-4">
-                <div>
-                    <label for="new-well-id" class="block text-sm">井戸ID (必須)</label>
-                    <input type="text" id="new-well-id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                </div>
-                <div>
-                    <label for="new-well-name" class="block text-sm">井戸名 (必須)</label>
-                    <input type="text" id="new-well-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                </div>
+                <div><label for="new-well-id" class="block text-sm">井戸ID (必須)</label><input type="text" id="new-well-id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
+                <div><label for="new-well-name" class="block text-sm">井戸名 (必須)</label><input type="text" id="new-well-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="new-well-lat" class="block text-sm">緯度 (必須)</label>
-                        <input type="number" id="new-well-lat" step="any" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                    </div>
-                    <div>
-                        <label for="new-well-lng" class="block text-sm">経度 (必須)</label>
-                        <input type="number" id="new-well-lng" step="any" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                    </div>
+                    <div><label for="new-well-lat" class="block text-sm">緯度 (必須)</label><input type="number" id="new-well-lat" step="any" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
+                    <div><label for="new-well-lng" class="block text-sm">経度 (必須)</label><input type="number" id="new-well-lng" step="any" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></div>
                 </div>
             </form>
             <div class="mt-6 flex justify-end space-x-3">
-                <button id="close-add-well-modal-btn" class="px-4 py-2 bg-gray-200 rounded-md">キャンセル</button>
-                <button id="save-new-well-btn" class="px-4 py-2 bg-green-600 text-white rounded-md">保存</button>
+                <button id="close-add-well-modal-btn" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">キャンセル</button>
+                <button id="save-new-well-btn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">保存</button>
             </div>
         </div>
     </div>
-
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -136,7 +119,6 @@
                 this.initMap();
                 const recentProjects = JSON.parse(localStorage.getItem('recentProjects') || '[]');
                 this.updateRecentProjectsList(recentProjects);
-                this.showProjectModal();
             },
             
             async startProject(id) {
@@ -153,8 +135,9 @@
                     await this.loadProjectData();
                     
                     this.dom.currentProjectIdDisplay.textContent = this.currentProjectId;
-                    this.dom.mainContent.classList.remove('invisible');
+                    this.dom.projectIndicator.classList.remove('hidden');
                     this.hideProjectModal();
+
                 } catch (error) {
                     console.error("Failed to start project:", error);
                     alert(`プロジェクトの読み込みに失敗しました。\n\nエラー: ${error.message}`);
@@ -168,7 +151,7 @@
                     projectModal: document.getElementById('project-modal'),
                     startProjectBtn: document.getElementById('start-project-btn'),
                     switchProjectBtn: document.getElementById('switch-project-btn'),
-                    mainContent: document.getElementById('main-content'),
+                    projectIndicator: document.getElementById('project-indicator'),
                     currentProjectIdDisplay: document.getElementById('current-project-id-display'),
                     recentProjectsList: document.getElementById('recent-projects-list'),
                     projectIdInput: document.getElementById('project-id-input'),
@@ -194,6 +177,7 @@
             resetAppState() {
                 if (this.unsubscribeWells) this.unsubscribeWells();
                 if (this.wellMarkersLayer) this.wellMarkersLayer.clearLayers();
+                this.dom.projectIndicator.classList.add('hidden');
             },
 
             saveProjectHistory(id) {
@@ -213,7 +197,6 @@
 
             showProjectModal() {
                 this.dom.projectModal.classList.remove('modal-hidden');
-                this.dom.mainContent.classList.add('invisible');
             },
 
             hideProjectModal() {
@@ -236,9 +219,7 @@
             },
 
             getCollections() {
-                if (!this.currentProjectId) {
-                    throw new Error("Cannot get collections, Project ID is empty.");
-                }
+                if (!this.currentProjectId) throw new Error("Cannot get collections, Project ID is empty.");
                 return { wells: collection(this.db, 'projects', this.currentProjectId, 'wells') };
             },
 
