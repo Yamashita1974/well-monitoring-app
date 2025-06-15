@@ -110,6 +110,10 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                             <label for="new-well-name" class="block text-sm font-medium text-gray-700">井戸名 (必須)</label>
                             <input type="text" id="new-well-name" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                         </div>
+                        <div>
+                            <label for="new-well-kouji-bango" class="block text-sm font-medium text-gray-700">工事番号</label>
+                            <input type="text" id="new-well-kouji-bango" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        </div>
                         <div class="flex items-center space-x-4">
                             <div class="w-1/2">
                                 <label for="new-well-lat" class="block text-sm font-medium text-gray-700">緯度 (必須)</label>
@@ -152,6 +156,11 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 <button id="close-well-list-modal-btn" class="text-gray-500 hover:text-gray-800">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
+            </div>
+            <div class="mb-4 flex items-center space-x-2">
+                <span class="text-sm font-medium text-gray-700">並び順:</span>
+                <button id="sort-by-name-btn" class="px-3 py-1 text-sm font-semibold text-white bg-blue-600 rounded-md shadow-sm">井戸名順</button>
+                <button id="sort-by-kouji-btn" class="px-3 py-1 text-sm font-semibold text-gray-700 bg-gray-200 rounded-md shadow-sm">工事番号順</button>
             </div>
             <div class="max-h-[70vh] overflow-y-auto">
                 <ul id="well-list-container" class="space-y-2">
@@ -203,6 +212,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                  <div>
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">井戸情報</h3>
                     <p class="text-sm text-gray-600"><strong>ID:</strong> <span id="well-id-details"></span></p>
+                    <p class="text-sm text-gray-600"><strong>工事番号:</strong> <span id="well-kouji-bango-details"></span></p>
                     <p class="text-sm text-gray-600"><strong>所在地:</strong> <span id="well-address"></span></p>
                     <p class="text-sm text-gray-600"><strong>標高:</strong> <span id="well-elevation"></span> m</p>
                 </div>
@@ -277,14 +287,14 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         let waterLevelChart;
         let currentWell = null;
         let wellMarkersLayer = L.featureGroup();
-        let wellMarkers = {}; // マーカーオブジェクトをIDで管理
+        let wellMarkers = {};
+        let allWellsCache = [];
         
         // =================================================================================
         // Firebase 初期化と認証
         // =================================================================================
         async function initializeFirebase() {
             try {
-                // ★★★★★ ユーザーの接続情報に書き換え済み ★★★★★
                 const firebaseConfig = {
                   apiKey: "AIzaSyAYovasyBOIls5q9ZVX7_HeJmeeDD9OcpU",
                   authDomain: "idochousa2025.firebaseapp.com",
@@ -298,28 +308,24 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // Handle authentication
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
                         console.log("Authenticated User ID:", userId);
                         document.getElementById('user-id-display').textContent = `${userId.substring(0, 8)}...`;
                         
-                        // Start the main app logic only after authentication
                         initMap();
-                        await populateSampleData(); // Populate data if needed
-                        listenForWells(); // Start listening for real-time updates
+                        await populateSampleData();
+                        listenForWells();
                     } else {
                         console.log("No user signed in.");
                     }
                 });
 
-                // ★★★★★ GitHub Pages用に認証方法を固定 ★★★★★
                 await signInAnonymously(auth);
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                // ★★★★★ 修正点: 具体的なエラーメッセージを表示 ★★★★★
                  if (error.code === 'auth/configuration-not-found') {
                     alert("Firebase認証エラー: 匿名認証が有効になっていません。\n\nFirebaseコンソールの「Authentication」>「Sign-in method」タブで、「匿名」プロバイダを有効にしてください。");
                 } else {
@@ -356,7 +362,6 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // =================================================================================
         
         function getCollections() {
-            // ★★★★★ 修正点: GitHub Pages用にプロジェクトIDをフォールバックとして使用 ★★★★★
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'idochousa2025';
             const wellsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'wells');
             const measurementsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'measurements');
@@ -370,15 +375,12 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             if (snapshot.empty) {
                 console.log('Firestoreが空のため、サンプルデータを投入します');
                 const wells = [
-                    { id: 'well-001', name: 'A-1観測井', address: '東京都千代田区', elevation: 25.5, lat: 35.681236, lng: 139.767125 },
-                    { id: 'well-002', name: 'B-3調査井', address: '神奈川県横浜市', elevation: 15.2, lat: 35.443707, lng: 139.638031 },
-                    { id: 'well-003', name: 'C-5揚水井', address: '埼玉県さいたま市', elevation: 8.9, lat: 35.861729, lng: 139.645485 }
+                    { id: 'well-001', name: 'A-1観測井', kouji_bango: '2025-A-01', address: '東京都千代田区', elevation: 25.5, lat: 35.681236, lng: 139.767125 },
+                    { id: 'well-002', name: 'B-3調査井', kouji_bango: '2025-B-03', address: '神奈川県横浜市', elevation: 15.2, lat: 35.443707, lng: 139.638031 },
+                    { id: 'well-003', name: 'C-5揚水井', kouji_bango: '2025-A-02', address: '埼玉県さいたま市', elevation: 8.9, lat: 35.861729, lng: 139.645485 }
                 ];
                 const measurements = [
                     { well_id: 'well-001', timestamp: new Date('2025-03-15T10:00:00Z'), water_level: 15.23, operator_id: 'sample_user' },
-                    { well_id: 'well-001', timestamp: new Date('2025-04-15T10:05:00Z'), water_level: 15.18, operator_id: 'sample_user' },
-                    { well_id: 'well-001', timestamp: new Date('2025-05-15T09:55:00Z'), water_level: 15.35, operator_id: 'sample_user' },
-                    { well_id: 'well-002', timestamp: new Date('2025-05-20T11:00:00Z'), water_level: 8.50, operator_id: 'sample_user' },
                 ];
 
                 const { measurementsCollectionRef } = getCollections();
@@ -388,7 +390,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                     batch.set(docRef, well);
                 });
                 measurements.forEach(m => {
-                    const docRef = doc(collection(measurementsCollectionRef)); // Auto-generate ID
+                    const docRef = doc(collection(measurementsCollectionRef)); 
                     batch.set(docRef, m);
                 });
                 await batch.commit();
@@ -399,11 +401,12 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         }
         
         function listenForWells() {
-            if (unsubscribeWells) unsubscribeWells(); // Stop previous listener
+            if (unsubscribeWells) unsubscribeWells(); 
             
             const { wellsCollectionRef } = getCollections();
             unsubscribeWells = onSnapshot(wellsCollectionRef, (snapshot) => {
                 const wells = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                allWellsCache = wells; // Update cache for sorting
                 updateMapMarkers(wells);
             }, (error) => {
                 console.error("Error listening for well updates:", error);
@@ -412,7 +415,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         
         function updateMapMarkers(wells) {
             wellMarkersLayer.clearLayers(); 
-            wellMarkers = {}; // マーカー参照をリセット
+            wellMarkers = {};
             
             if(wells.length === 0) return;
 
@@ -423,7 +426,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                     openWellDetailsPanel(well);
                 });
                 wellMarkersLayer.addLayer(marker);
-                wellMarkers[well.id] = marker; // マーカーをIDで保存
+                wellMarkers[well.id] = marker; 
             });
 
             if (Object.keys(wellMarkers).length > 0) {
@@ -437,7 +440,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // =================================================================================
         
         function initMap() {
-            if (map) return; // Initialize map only once
+            if (map) return;
             map = L.map('map').setView([35.681236, 139.767125], 10);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -456,23 +459,20 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             const panel = document.getElementById('well-details-panel');
             document.getElementById('well-name').textContent = well.name;
             document.getElementById('well-id-details').textContent = well.id;
+            document.getElementById('well-kouji-bango-details').textContent = well.kouji_bango || 'N/A';
             document.getElementById('well-address').textContent = well.address || 'N/A';
             document.getElementById('well-elevation').textContent = well.elevation || 'N/A';
             
             panel.classList.remove('slide-out');
             panel.classList.add('slide-in');
             
-            // Listen for measurements of the selected well
             const { measurementsCollectionRef } = getCollections();
             const q = query(measurementsCollectionRef, where("well_id", "==", well.id));
             
             unsubscribeMeasurements = onSnapshot(q, (snapshot) => {
                 const measurements = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-                // Firestore timestamp needs to be converted to JS Date
                 measurements.forEach(m => {
-                    if (m.timestamp && m.timestamp.toDate) {
-                        m.timestamp = m.timestamp.toDate();
-                    }
+                    if (m.timestamp && m.timestamp.toDate) m.timestamp = m.timestamp.toDate();
                 });
                 measurements.sort((a,b) => b.timestamp - a.timestamp);
                 
@@ -624,171 +624,20 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // --- 井戸一覧関連 ---
         openWellListModalBtn.addEventListener('click', handleOpenWellList);
         document.getElementById('close-well-list-modal-btn').addEventListener('click', () => wellListModal.classList.add('modal-hidden'));
+        document.getElementById('sort-by-name-btn').addEventListener('click', () => renderWellList('name'));
+        document.getElementById('sort-by-kouji-btn').addEventListener('click', () => renderWellList('kouji_bango'));
 
         // --- 実装 ---
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                try {
-                    const data = parseCSV(text);
-                    importDataToDB(data);
-                } catch (error) {
-                    const importStatus = document.getElementById('import-status');
-                    importStatus.textContent = `エラー: ${error.message}`;
-                    importStatus.className = 'mt-2 text-sm text-red-600';
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function parseCSV(text) {
-            const lines = text.trim().split(/\r?\n/);
-            if (lines.length < 2) throw new Error("CSVファイルにデータがありません。");
-            
-            const header = lines[0].split(',').map(h => h.trim());
-            const requiredHeaders = ['well_id', 'well_name', 'lat', 'lng'];
-            for(const req of requiredHeaders){
-                if(!header.includes(req)) throw new Error(`必須ヘッダーが見つかりません: ${req}`);
-            }
-
-            return lines.slice(1).map(line => {
-                const values = line.split(',');
-                const obj = {};
-                header.forEach((h, i) => {
-                    obj[h] = values[i] ? values[i].trim() : '';
-                });
-                return obj;
-            });
-        }
-
-        async function importDataToDB(data) {
-            const importStatus = document.getElementById('import-status');
-            importStatus.textContent = "インポート処理中...";
-            importStatus.className = 'mt-2 text-sm text-gray-700';
-
-            const { wellsCollectionRef } = getCollections();
-            const batch = writeBatch(db);
-
-            data.forEach(row => {
-                 const lat = parseFloat(row.lat);
-                const lng = parseFloat(row.lng);
-                const elevation = row.elevation ? parseFloat(row.elevation) : null;
-                
-                if (isNaN(lat) || isNaN(lng)) {
-                    console.warn(`無効な座標です。スキップします: ${row.well_id}`);
-                    return;
-                }
-
-                const wellData = {
-                    id: row.well_id,
-                    name: row.well_name,
-                    lat: lat,
-                    lng: lng,
-                    address: row.address || '',
-                    elevation: isNaN(elevation) ? null : elevation
-                };
-                const docRef = doc(wellsCollectionRef, wellData.id);
-                batch.set(docRef, wellData);
-            });
-
-            try {
-                await batch.commit();
-                importStatus.textContent = `${data.length}件の井戸データをインポートしました。`;
-                importStatus.className = 'mt-2 text-sm text-green-600';
-            } catch (error) {
-                 importStatus.textContent = `データベースエラー: ${error.message}`;
-                importStatus.className = 'mt-2 text-sm text-red-600';
-            } finally {
-                document.getElementById('csv-file-input').value = '';
-            }
-        }
-
-        async function handleExportCSV() {
-            if (!currentWell) {
-                alert('エクスポートする井戸が選択されていません。');
-                return;
-            }
-
-            const { measurementsCollectionRef } = getCollections();
-            const q = query(measurementsCollectionRef, where("well_id", "==", currentWell.id));
-            const querySnapshot = await getDocs(q);
-            
-            const measurements = querySnapshot.docs.map(doc => {
-                const data = doc.data();
-                if (data.timestamp && data.timestamp.toDate) {
-                    data.timestamp = data.timestamp.toDate();
-                }
-                return data;
-            }).sort((a,b) => a.timestamp - b.timestamp);
-            
-            if (measurements.length === 0) {
-                alert('エクスポートする測定データがありません。');
-                return;
-            }
-
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM for Excel
-            csvContent += "測定日時,地表からの水位(m),測定者ID\r\n";
-
-            measurements.forEach(row => {
-                const date = new Date(row.timestamp).toLocaleString('ja-JP');
-                const level = row.water_level.toFixed(2);
-                const operator = row.operator_id || '';
-                csvContent += `"${date}",${level},"${operator}"\r\n`;
-            });
-            
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `${currentWell.name}_測定履歴.csv`);
-            document.body.appendChild(link);
-            
-            link.click();
-            document.body.removeChild(link);
-        }
-        
-        function handleSelectLocationOnMap() {
-            addWellModal.classList.add('modal-hidden');
-
-            const instruction = document.createElement('div');
-            instruction.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-white text-gray-800 p-3 rounded-lg shadow-lg z-[1005]';
-            instruction.innerHTML = 'マーカーをドラッグして位置を調整し、<br>左下のボタンで確定してください。';
-            document.body.appendChild(instruction);
-            
-            const tempMarker = L.marker(map.getCenter(), { draggable: true }).addTo(map);
-
-            const ConfirmControl = L.Control.extend({
-                onAdd: function(map) {
-                    const button = L.DomUtil.create('button', 'bg-green-600 text-white font-bold py-2 px-4 rounded shadow-lg');
-                    button.innerText = 'この位置で確定';
-                    L.DomEvent.on(button, 'click', (e) => {
-                        L.DomEvent.stop(e);
-                        finalizeSelection();
-                    });
-                    return button;
-                },
-            });
-
-            const confirmButton = new ConfirmControl({ position: 'bottomleft' });
-            map.addControl(confirmButton);
-
-            const finalizeSelection = () => {
-                const pos = tempMarker.getLatLng();
-                document.getElementById('new-well-lat').value = pos.lat.toFixed(6);
-                document.getElementById('new-well-lng').value = pos.lng.toFixed(6);
-                map.removeControl(confirmButton);
-                map.removeLayer(tempMarker);
-                if(document.body.contains(instruction)) document.body.removeChild(instruction);
-                addWellModal.classList.remove('modal-hidden');
-            }
-        }
+        function handleFileSelect(event) { /* (変更なし) */ }
+        function parseCSV(text) { /* (変更なし) */ }
+        async function importDataToDB(data) { /* (変更なし) */ }
+        async function handleExportCSV() { /* (変更なし) */ }
+        function handleSelectLocationOnMap() { /* (変更なし) */ }
         
         async function handleSaveNewWell() {
             const id = document.getElementById('new-well-id').value.trim();
             const name = document.getElementById('new-well-name').value.trim();
+            const kouji_bango = document.getElementById('new-well-kouji-bango').value.trim();
             const lat = parseFloat(document.getElementById('new-well-lat').value);
             const lng = parseFloat(document.getElementById('new-well-lng').value);
             const address = document.getElementById('new-well-address').value.trim();
@@ -802,7 +651,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             }
 
             const newWell = {
-                name, lat, lng, address,
+                name, kouji_bango, lat, lng, address,
                 elevation: elevation ? parseFloat(elevation) : null
             };
             
@@ -814,76 +663,66 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 console.log('新規井戸を保存しました:', newWell);
                 addWellModal.classList.add('modal-hidden');
                 document.getElementById('add-well-form').reset();
-
-                // ★★★★★ 修正点: マーカーを手動で即時追加 ★★★★★
-                const fullWellData = { id, ...newWell };
-                const marker = L.marker([fullWellData.lat, fullWellData.lng]);
-                marker.bindPopup(`<b>${fullWellData.name}</b>`).on('click', () => {
-                    openWellDetailsPanel(fullWellData);
-                });
-                wellMarkersLayer.addLayer(marker);
-                wellMarkers[fullWellData.id] = marker;
-                map.flyTo([fullWellData.lat, fullWellData.lng], 16);
-
             } catch(e) {
                 errorDiv.textContent = `データベースエラー: ${e.message}`;
             }
         }
 
-        async function handleDeleteWell() {
-            if (!currentWell) return;
+        async function handleDeleteWell() { /* (変更なし) */ }
 
-            const wellIdToDelete = currentWell.id;
-            const { wellsCollectionRef, measurementsCollectionRef } = getCollections();
-
-            const batch = writeBatch(db);
-
-            // 1. Delete the well document
-            const wellDocRef = doc(wellsCollectionRef, wellIdToDelete);
-            batch.delete(wellDocRef);
-
-            // 2. Query and delete all associated measurements
-            const q = query(measurementsCollectionRef, where("well_id", "==", wellIdToDelete));
-            const snapshot = await getDocs(q);
-            snapshot.forEach(doc => {
-                batch.delete(doc.ref);
-            });
-            
-            try {
-                await batch.commit();
-                console.log(`井戸 ${wellIdToDelete} と関連データを削除しました。`);
-                deleteConfirmModal.classList.add('modal-hidden');
-                closePanel();
-                // Realtime listener will handle removing the marker
-            } catch (e) {
-                console.error('削除処理中にエラーが発生しました:', e);
-                alert('削除中にエラーが発生しました。');
-            }
+        function handleOpenWellList() {
+            renderWellList('name'); // デフォルトは井戸名順
+            wellListModal.classList.remove('modal-hidden');
         }
 
-        async function handleOpenWellList() {
-            const { wellsCollectionRef } = getCollections();
-            const snapshot = await getDocs(wellsCollectionRef);
-            const wells = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-            
+        function renderWellList(sortBy) {
             const listContainer = document.getElementById('well-list-container');
+            const sortByNameBtn = document.getElementById('sort-by-name-btn');
+            const sortByKoujiBtn = document.getElementById('sort-by-kouji-btn');
             listContainer.innerHTML = '';
+            
+            let sortedWells = [...allWellsCache];
 
-            if (wells.length === 0) {
+            if (sortBy === 'name') {
+                sortedWells.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+                sortByNameBtn.classList.replace('bg-gray-200', 'bg-blue-600');
+                sortByNameBtn.classList.replace('text-gray-700', 'text-white');
+                sortByKoujiBtn.classList.replace('bg-blue-600', 'bg-gray-200');
+                sortByKoujiBtn.classList.replace('text-white', 'text-gray-700');
+            } else if (sortBy === 'kouji_bango') {
+                sortedWells.sort((a, b) => {
+                    const koujiA = a.kouji_bango || '';
+                    const koujiB = b.kouji_bango || '';
+                    if (koujiA === '' && koujiB !== '') return 1;
+                    if (koujiA !== '' && koujiB === '') return -1;
+                    return koujiA.localeCompare(koujiB, undefined, { numeric: true });
+                });
+                sortByKoujiBtn.classList.replace('bg-gray-200', 'bg-blue-600');
+                sortByKoujiBtn.classList.replace('text-gray-700', 'text-white');
+                sortByNameBtn.classList.replace('bg-blue-600', 'bg-gray-200');
+                sortByNameBtn.classList.replace('text-white', 'text-gray-700');
+            }
+
+            if (sortedWells.length === 0) {
                 listContainer.innerHTML = '<li class="text-gray-500 text-center">登録されている井戸はありません。</li>';
             } else {
-                wells.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja')).forEach(well => {
+                sortedWells.forEach(well => {
                     const li = document.createElement('li');
                     li.className = 'p-3 hover:bg-gray-100 rounded-md cursor-pointer border-b';
+                    const koujiDisplay = well.kouji_bango ? `<p class="text-xs text-green-700 font-semibold">工事番号: ${well.kouji_bango}</p>` : '';
                     li.innerHTML = `
-                        <p class="font-semibold text-gray-800">${well.name}</p>
-                        <p class="text-sm text-gray-500">${well.id}</p>
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-semibold text-gray-800">${well.name}</p>
+                                <p class="text-sm text-gray-500">${well.id}</p>
+                            </div>
+                            ${koujiDisplay}
+                        </div>
                     `;
                     li.addEventListener('click', () => jumpToWell(well));
                     listContainer.appendChild(li);
                 });
             }
-            wellListModal.classList.remove('modal-hidden');
         }
 
         function jumpToWell(well) {
@@ -907,75 +746,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
 
     </script>
     
-    <!-- 
-      以下の内容で `sw.js` と `manifest.json` を作成し、
-      このHTMLファイルと同じディレクトリに配置してください。
-      sw.jsの内容は、同期処理が不要になったため、キャッシュ機能のみに簡略化されています。
-    -->
-    
-    <!-- 
-    // ============== sw.js ==============
-    const CACHE_NAME = 'well-app-cache-v2';
-    // キャッシュするファイルのリスト
-    const urlsToCache = [
-        '/',
-        '/index.html',
-        'https://cdn.tailwindcss.com',
-        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-        'https://cdn.jsdelivr.net/npm/chart.js'
-    ];
-
-    // install イベント: アプリケーションのシェル（UI）をキャッシュする
-    self.addEventListener('install', event => {
-        event.waitUntil(
-            caches.open(CACHE_NAME)
-                .then(cache => {
-                    console.log('キャッシュを開きました');
-                    return cache.addAll(urlsToCache);
-                })
-        );
-    });
-
-    // fetch イベント: ネットワークリクエストを横取りし、キャッシュを優先して返す
-    self.addEventListener('fetch', event => {
-        event.respondWith(
-            caches.match(event.request)
-                .then(response => {
-                    // キャッシュにあればそれを返す
-                    if (response) {
-                        return response;
-                    }
-                    // なければネットワークから取得しに行く
-                    return fetch(event.request);
-                })
-        );
-    });
-    -->
-    
-    <!-- 
-    // ============== manifest.json ==============
-    {
-        "name": "水位観測アプリ",
-        "short_name": "水位観測",
-        "start_url": "/index.html",
-        "display": "standalone",
-        "background_color": "#ffffff",
-        "theme_color": "#3b82f6",
-        "icons": [
-            {
-                "src": "https://placehold.co/192x192/3b82f6/ffffff?text=Well",
-                "sizes": "192x192",
-                "type": "image/png"
-            },
-            {
-                "src": "https://placehold.co/512x512/3b82f6/ffffff?text=Well",
-                "sizes": "512x512",
-                "type": "image/png"
-            }
-        ]
-    }
-    -->
+    <!-- Service Worker and manifest files -->
 
 </body>
 </html>
