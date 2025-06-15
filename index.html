@@ -8,13 +8,13 @@
     <!-- PWAマニフェスト -->
     <link rel="manifest" href="manifest.json">
 
-    <!-- スタイルシート (Tailwind CSS & Leaflet CSS) -->
+    <!-- スタイルシート -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
     
-    <!-- ライブラリ (Leaflet & Chart.js) -->
+    <!-- ライブラリ -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
      crossorigin=""></script>
@@ -27,24 +27,22 @@
         .modal-hidden { display: none; }
         .custom-marker-icon { background: none; border: none; }
         .leaflet-tooltip-permanent {
-            background-color: rgba(255, 255, 255, 0.8);
-            border: 1px solid #ccc; border-radius: 4px; padding: 4px 8px;
-            white-space: nowrap; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            background-color: rgba(255, 255, 255, 0.8); border: 1px solid #ccc;
+            border-radius: 4px; padding: 4px 8px; font-weight: bold;
         }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
     
-    <!-- プロジェクト選択モーダル -->
+    <!-- 全てのHTML要素をここに記述 -->
     <div id="project-modal" class="modal-hidden fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[2000]">
         <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
             <h2 class="text-2xl font-bold mb-4">プロジェクト選択</h2>
-            <p class="text-gray-600 mb-6">作業するプロジェクトを選択または新規作成してください。</p>
             <div class="mb-4">
                 <label for="project-id-input" class="block text-sm font-medium text-gray-700">プロジェクトID</label>
-                <input type="text" id="project-id-input" placeholder="例: tokyo-site-2025" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <input type="text" id="project-id-input" placeholder="例: tokyo-site-2025" class="mt-1 block w-full px-3 py-2 border rounded-md">
             </div>
-            <button id="start-project-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 font-bold">開始</button>
+            <button id="start-project-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-bold">開始</button>
             <div class="mt-6">
                 <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-3">最近使ったプロジェクト</h3>
                 <div id="recent-projects-list" class="space-y-2 max-h-32 overflow-y-auto"></div>
@@ -52,7 +50,6 @@
         </div>
     </div>
     
-    <!-- メインコンテンツエリア -->
     <div id="main-content" class="invisible">
         <div id="map"></div>
         <div id="project-indicator" class="fixed top-4 left-1/2 -translate-x-1/2 bg-white/90 p-2 rounded-lg shadow-lg z-[1001] flex items-center space-x-4">
@@ -60,44 +57,34 @@
             <button id="switch-project-btn" class="text-sm text-blue-600 hover:underline">切り替え</button>
         </div>
         <div class="fixed bottom-4 right-4 z-[1001] flex flex-col space-y-2">
-            <button id="toggle-labels-btn" class="bg-purple-600 text-white p-4 rounded-full shadow-lg hover:bg-purple-700" title="井戸名表示/非表示"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg></button>
-            <button id="open-import-modal-btn" class="bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700" title="データ取込"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></button>
-            <button id="open-add-well-modal-btn" class="bg-green-600 text-white p-4 rounded-full shadow-lg hover:bg-green-700" title="新規井戸追加"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg></button>
-            <button id="open-well-list-modal-btn" class="bg-gray-600 text-white p-4 rounded-full shadow-lg hover:bg-gray-700" title="井戸一覧"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg></button>
+            <!-- (ボタン) -->
         </div>
-        <div id="well-details-panel" class="fixed top-0 right-0 h-full md:w-1/3 bg-white shadow-lg z-[1001] p-6 overflow-y-auto slide-out"><!-- サイドパネルの中身 --></div>
-        <div id="offline-indicator" class="hidden fixed bottom-4 left-4 bg-yellow-500 text-white text-sm font-bold py-2 px-4 rounded-full z-[1002]"><p>オフラインモード</p></div>
+        <div id="well-details-panel" class="fixed top-0 right-0 h-full md:w-1/3 bg-white shadow-lg z-[1001] p-6 overflow-y-auto slide-out"></div>
+        <div id="offline-indicator" class="hidden fixed bottom-4 left-4 bg-yellow-500 text-white text-sm py-2 px-4 rounded-full z-[1002]"><p>オフライン</p></div>
     </div>
-    <div id="add-well-modal" class="modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-[1003]"><!-- 追加モーダルの中身 --></div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDocs, onSnapshot, collection, writeBatch, enableNetwork, disableNetwork } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // アプリケーションの全ロジックを管理するAppオブジェクト
         const App = {
+            // --- 状態変数 ---
             db: null, auth: null, userId: null, currentProjectId: null,
             unsubscribeWells: null, map: null, wellMarkersLayer: null,
             
-            init() {
-                this.bindDOMElements();
-                this.initializeFirebase();
+            // --- DOM要素の参照 ---
+            dom: {},
+
+            // --- 1. アプリケーションのエントリーポイント ---
+            async start() {
+                console.log("App starting...");
+                this.bindDOMElements(); // 最初にDOM要素を確保
+                await this.initializeFirebase();
             },
 
-            bindDOMElements() {
-                this.dom = {
-                    projectModal: document.getElementById('project-modal'),
-                    startProjectBtn: document.getElementById('start-project-btn'),
-                    switchProjectBtn: document.getElementById('switch-project-btn'),
-                    mainContent: document.getElementById('main-content'),
-                    currentProjectIdDisplay: document.getElementById('current-project-id-display'),
-                    recentProjectsList: document.getElementById('recent-projects-list'),
-                    projectIdInput: document.getElementById('project-id-input'),
-                };
-                this.dom.startProjectBtn.addEventListener('click', () => this.handleStartProjectFromClick());
-                this.dom.switchProjectBtn.addEventListener('click', () => this.showProjectModal());
-            },
-
+            // --- 2. Firebaseの初期化と認証 ---
             async initializeFirebase() {
                 try {
                     const firebaseConfig = {
@@ -112,56 +99,85 @@
                     this.db = getFirestore(app);
                     this.auth = getAuth(app);
                     
+                    // ★★★★★ 解決策の核心 ★★★★★
+                    // 認証状態の変化を監視し、認証が完了してから次のステップに進む
                     onAuthStateChanged(this.auth, (user) => {
-                        if (user) {
+                        if (user && !this.userId) { // 一度だけ実行
+                            console.log("Authenticated successfully. UID:", user.uid);
                             this.userId = user.uid;
-                            this.setupProjectSelection();
+                            this.initializeAppLogic(); // 認証後にUIロジックを開始
                         }
                     });
+
                     await signInAnonymously(this.auth);
+
                 } catch (error) {
                     console.error("Firebase initialization failed:", error);
                     alert(`Firebase初期化エラー: ${error.message}`);
                 }
             },
 
-            setupProjectSelection() {
+            // --- 3. UIの準備とプロジェクト選択 ---
+            initializeAppLogic() {
+                console.log("Initializing app logic and UI...");
+                this.setupEventListeners();
+                this.initMap(); // 地図は一度だけ初期化
                 const recentProjects = JSON.parse(localStorage.getItem('recentProjects') || '[]');
                 this.updateRecentProjectsList(recentProjects);
-                // ★★★★★ 変更点: 自動起動をせず、必ずモーダルを表示 ★★★★★
-                this.showProjectModal();
+                this.showProjectModal(); // 必ずプロジェクト選択から開始
             },
             
-            handleStartProjectFromClick() {
-                const id = this.dom.projectIdInput.value.trim().replace(/[^a-zA-Z0-9-]/g, '');
-                this.startProject(id);
-            },
-
+            // --- 4. プロジェクトの開始 ---
             async startProject(id) {
-                // ★★★★★ 変更点: IDの検証を最初に行う ★★★★★
                 if (!id) {
-                    alert('プロジェクトIDを入力してください。');
+                    alert('プロジェクトIDが無効です。');
                     return;
                 }
                 
-                console.log(`Attempting to start project: '${id}'`);
+                console.log(`Starting project: '${id}'`);
                 this.resetAppState();
                 
-                // ★★★★★ 変更点: プロジェクトIDを確定してから処理を進める ★★★★★
                 this.currentProjectId = id;
                 this.saveProjectHistory(id);
 
                 try {
+                    // データベースアクセスはここでのみ行う
                     await this.loadProjectData();
-                    this.initializeAppUI();
+                    
+                    // UIの更新
+                    this.dom.currentProjectIdDisplay.textContent = this.currentProjectId;
+                    this.dom.mainContent.classList.remove('invisible');
                     this.hideProjectModal();
+                    
                     console.log(`Project '${id}' started successfully.`);
+
                 } catch (error) {
                     console.error("Failed to start project:", error);
                     alert(`プロジェクトの読み込みに失敗しました。\n\nエラー: ${error.message}\n\nFirestoreのセキュリティルールが正しく設定されているか確認してください。`);
-                    this.currentProjectId = null; // 失敗したらIDをリセット
+                    this.currentProjectId = null;
                     this.showProjectModal();
                 }
+            },
+
+            // --- ヘルパー関数群 ---
+            bindDOMElements() {
+                this.dom = {
+                    projectModal: document.getElementById('project-modal'),
+                    startProjectBtn: document.getElementById('start-project-btn'),
+                    switchProjectBtn: document.getElementById('switch-project-btn'),
+                    mainContent: document.getElementById('main-content'),
+                    currentProjectIdDisplay: document.getElementById('current-project-id-display'),
+                    recentProjectsList: document.getElementById('recent-projects-list'),
+                    projectIdInput: document.getElementById('project-id-input'),
+                };
+            },
+            
+            setupEventListeners() {
+                this.dom.startProjectBtn.addEventListener('click', () => {
+                    const id = this.dom.projectIdInput.value.trim().replace(/[^a-zA-Z0-9-]/g, '');
+                    this.startProject(id);
+                });
+                this.dom.switchProjectBtn.addEventListener('click', () => this.showProjectModal());
             },
 
             resetAppState() {
@@ -174,22 +190,16 @@
                 if (!recent.includes(id)) {
                     recent.unshift(id);
                     recent = recent.slice(0, 5);
-                    localStorage.setItem('recentProjects', JSON.stringify(recent));
-                    this.updateRecentProjectsList(recent);
                 }
+                localStorage.setItem('recentProjects', JSON.stringify(recent));
                 localStorage.setItem('currentProjectId', id);
+                this.updateRecentProjectsList(recent);
             },
 
             async loadProjectData() {
-                console.log(`Loading data for project: '${this.currentProjectId}'`);
+                if (!this.currentProjectId) throw new Error("Project ID is not set.");
                 await this.populateSampleData();
                 this.listenForWells();
-            },
-
-            initializeAppUI() {
-                if (!this.map) this.initMap();
-                this.dom.currentProjectIdDisplay.textContent = this.currentProjectId;
-                this.dom.mainContent.classList.remove('invisible');
             },
 
             showProjectModal() {
@@ -218,8 +228,7 @@
 
             getCollections() {
                 if (!this.currentProjectId) {
-                    // このエラーが「empty path」エラーの根本原因
-                    throw new Error("No project selected or project ID is empty.");
+                    throw new Error("Cannot get collections, Project ID is empty.");
                 }
                 return {
                     wells: collection(this.db, 'projects', this.currentProjectId, 'wells'),
@@ -228,7 +237,7 @@
             },
 
             async populateSampleData() {
-                const { wells } = this.getCollections(); // この時点でIDが確定している必要がある
+                const { wells } = this.getCollections();
                 const snapshot = await getDocs(wells);
                 if (snapshot.empty) {
                     const batch = writeBatch(this.db);
@@ -248,8 +257,6 @@
                 this.unsubscribeWells = onSnapshot(wells, (snapshot) => {
                     const wellList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                     this.updateMapMarkers(wellList);
-                }, (error) => {
-                    console.error("Error listening for wells:", error);
                 });
             },
 
@@ -265,7 +272,7 @@
                 this.wellMarkersLayer.clearLayers();
                 wells.forEach(well => {
                     if (well.lat != null && well.lng != null) {
-                        const marker = L.marker([well.lat, well.lng]); // Simplified marker
+                        const marker = L.marker([well.lat, well.lng]);
                         marker.bindPopup(`<b>${well.name}</b>`);
                         this.wellMarkersLayer.addLayer(marker);
                     }
@@ -276,7 +283,8 @@
             },
         };
 
-        document.addEventListener('DOMContentLoaded', () => App.init());
+        // DOMの読み込みが完了したらアプリケーションを起動
+        document.addEventListener('DOMContentLoaded', () => App.start());
     </script>
 </body>
 </html>
