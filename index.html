@@ -37,15 +37,61 @@
         .modal-hidden {
             display: none;
         }
+        /* ★★★★★ 変更点: カスタムマーカーとツールチップ用のスタイルを追加 ★★★★★ */
+        .custom-marker-icon {
+            background: none;
+            border: none;
+        }
+        .leaflet-tooltip-permanent {
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 4px 8px;
+            white-space: nowrap;
+            font-weight: bold;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans">
     
+    <!-- プロジェクト選択モーダル -->
+    <div id="project-modal" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center z-[2000]">
+        <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-4">プロジェクト選択</h2>
+            <p class="text-gray-600 mb-6">作業するプロジェクトを選択または新規作成してください。</p>
+            <div class="mb-4">
+                <label for="project-id-input" class="block text-sm font-medium text-gray-700">新規または既存のプロジェクトID</label>
+                <input type="text" id="project-id-input" placeholder="例: tokyo-site-2025" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <p class="text-xs text-gray-500 mt-1">IDには英数字とハイフンのみ使用できます。</p>
+            </div>
+            <button id="start-project-btn" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 font-bold">このIDで開始</button>
+            <div class="mt-6">
+                <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-3">最近使ったプロジェクト</h3>
+                <div id="recent-projects-list" class="space-y-2 max-h-32 overflow-y-auto">
+                    <p class="text-gray-500 text-sm">履歴はありません。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- 地図コンテナ -->
     <div id="map"></div>
 
+    <!-- 現在のプロジェクト表示エリア -->
+    <div id="project-indicator" class="hidden fixed top-4 left-1/2 -translate-x-1/2 bg-white/90 text-gray-800 p-2 rounded-lg shadow-lg z-[1001] flex items-center space-x-4">
+        <span class="font-semibold">プロジェクト: <span id="current-project-id-display"></span></span>
+        <button id="switch-project-btn" class="text-sm text-blue-600 hover:underline">切り替え</button>
+    </div>
+
     <!-- UIボタンコンテナ -->
     <div class="fixed bottom-4 right-4 z-[1001] flex flex-col space-y-2">
+        <!-- ★★★★★ 変更点: ラベル表示/非表示ボタンを追加 ★★★★★ -->
+        <button id="toggle-labels-btn" class="bg-purple-600 text-white p-4 rounded-full shadow-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2" title="井戸名表示/非表示">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+            </svg>
+        </button>
         <button id="open-import-modal-btn" class="bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" title="データ取込">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -70,8 +116,8 @@
                 <h3 class="text-lg leading-6 font-medium text-gray-900">既存データのインポート</h3>
                 <div class="mt-2 px-7 py-3 text-left">
                     <p class="text-sm text-gray-500 mb-2">
-                        既存の井戸データをCSVファイルでアップロードします。
-                        <br><strong>注意：</strong>インポートすると既存のデータは全て上書きされます。
+                        現在のプロジェクトに井戸データをCSVファイルでアップロードします。
+                        <br><strong>注意：</strong>インポートすると現在のプロジェクトの井戸データは全て上書きされます。
                     </p>
                     <p class="text-sm font-semibold text-gray-700">CSVフォーマット:</p>
                     <pre class="bg-gray-100 p-2 rounded-md text-xs overflow-x-auto">well_id,well_name,lat,lng,address,elevation
@@ -187,6 +233,32 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             </div>
         </div>
     </div>
+    
+    <!-- ★★★★★ 変更点: 測定データ編集モーダルを追加 ★★★★★ -->
+    <div id="edit-measurement-modal" class="modal-hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[1005]">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">測定データの編集</h3>
+            <input type="hidden" id="edit-measurement-id">
+            <div class="space-y-4">
+                <div>
+                    <label for="edit-water-level" class="block text-sm font-medium text-gray-700">地表からの水位 (m)</label>
+                    <input type="number" step="0.01" id="edit-water-level" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="edit-timestamp" class="block text-sm font-medium text-gray-700">測定日時</label>
+                    <input type="datetime-local" id="edit-timestamp" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
+            <div class="items-center px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse mt-4">
+                <button id="save-edit-measurement-btn" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                    保存
+                </button>
+                <button id="cancel-edit-measurement-btn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm">
+                    キャンセル
+                </button>
+            </div>
+        </div>
+    </div>
 
 
     <!-- 井戸詳細サイドパネル -->
@@ -199,7 +271,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         </div>
         
         <div class="mb-6 bg-gray-50 p-4 rounded-lg">
-            <div class="flex justify-between items-start">
+            <div class="flex justify-between items-start mb-4">
                  <div>
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">井戸情報</h3>
                     <p class="text-sm text-gray-600"><strong>ID:</strong> <span id="well-id-details"></span></p>
@@ -209,6 +281,18 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 <div class="text-right">
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">ユーザー</h3>
                     <p id="user-id-display" class="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full"></p>
+                </div>
+            </div>
+            <!-- ★★★★★ 変更点: マーカー色変更UIを追加 ★★★★★ -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 mb-2">マーカーの色</h3>
+                <div id="color-palette" class="flex space-x-2">
+                    <button class="w-8 h-8 rounded-full border-2 border-gray-300" style="background-color: #3b82f6;" data-color="#3b82f6"></button>
+                    <button class="w-8 h-8 rounded-full border-2 border-gray-300" style="background-color: #ef4444;" data-color="#ef4444"></button>
+                    <button class="w-8 h-8 rounded-full border-2 border-gray-300" style="background-color: #f59e0b;" data-color="#f59e0b"></button>
+                    <button class="w-8 h-8 rounded-full border-2 border-gray-300" style="background-color: #10b981;" data-color="#10b981"></button>
+                    <button class="w-8 h-8 rounded-full border-2 border-gray-300" style="background-color: #8b5cf6;" data-color="#8b5cf6"></button>
+                    <button class="w-8 h-8 rounded-full border-2 border-gray-300" style="background-color: #4b5563;" data-color="#4b5563"></button>
                 </div>
             </div>
         </div>
@@ -270,21 +354,25 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // =================================================================================
         let db, auth;
         let userId = null;
+        let currentProjectId = null;
         let unsubscribeWells = null;
         let unsubscribeMeasurements = null;
 
         let map;
         let waterLevelChart;
         let currentWell = null;
+        let wellDataCache = {}; // ★★★★★ 変更点: 井戸データをキャッシュ
         let wellMarkersLayer = L.featureGroup();
-        let wellMarkers = {}; // マーカーオブジェクトをIDで管理
+        let wellMarkers = {};
+        
+        // ★★★★★ 変更点: ラベル表示状態の管理フラグ
+        let areLabelsVisible = false;
         
         // =================================================================================
         // Firebase 初期化と認証
         // =================================================================================
         async function initializeFirebase() {
             try {
-                // ★★★★★ ユーザーの接続情報に書き換え済み ★★★★★
                 const firebaseConfig = {
                   apiKey: "AIzaSyAYovasyBOIls5q9ZVX7_HeJmeeDD9OcpU",
                   authDomain: "idochousa2025.firebaseapp.com",
@@ -298,34 +386,113 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // Handle authentication
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
                         console.log("Authenticated User ID:", userId);
                         document.getElementById('user-id-display').textContent = `${userId.substring(0, 8)}...`;
                         
-                        // Start the main app logic only after authentication
-                        initMap();
-                        await populateSampleData(); // Populate data if needed
-                        listenForWells(); // Start listening for real-time updates
+                        setupProjectSelection();
                     } else {
                         console.log("No user signed in.");
                     }
                 });
 
-                // ★★★★★ GitHub Pages用に認証方法を固定 ★★★★★
                 await signInAnonymously(auth);
 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                // ★★★★★ 修正点: 具体的なエラーメッセージを表示 ★★★★★
                  if (error.code === 'auth/configuration-not-found') {
                     alert("Firebase認証エラー: 匿名認証が有効になっていません。\n\nFirebaseコンソールの「Authentication」>「Sign-in method」タブで、「匿名」プロバイダを有効にしてください。");
                 } else {
                     alert("アプリケーションの初期化に失敗しました。設定を確認してください。");
                 }
             }
+        }
+        
+        // =================================================================================
+        // プロジェクト管理機能
+        // =================================================================================
+        function setupProjectSelection() {
+            document.getElementById('start-project-btn').addEventListener('click', handleStartProject);
+            document.getElementById('switch-project-btn').addEventListener('click', showProjectModal);
+
+            const recentProjects = JSON.parse(localStorage.getItem('recentProjects') || '[]');
+            updateRecentProjectsList(recentProjects);
+
+            const lastProjectId = localStorage.getItem('currentProjectId');
+            if (lastProjectId && recentProjects.includes(lastProjectId)) {
+                startApp(lastProjectId);
+            } else {
+                showProjectModal();
+            }
+        }
+
+        function showProjectModal() {
+            document.getElementById('project-modal').classList.remove('modal-hidden');
+            document.getElementById('map').style.filter = 'blur(4px)';
+        }
+
+        function hideProjectModal() {
+            document.getElementById('project-modal').classList.add('modal-hidden');
+            document.getElementById('map').style.filter = 'none';
+        }
+        
+        function handleStartProject() {
+            const projectIdInput = document.getElementById('project-id-input');
+            const projectId = projectIdInput.value.trim().replace(/[^a-zA-Z0-9-]/g, '');
+            if (!projectId) {
+                alert('プロジェクトIDを入力してください。');
+                return;
+            }
+            startApp(projectId);
+        }
+
+        function updateRecentProjectsList(projects) {
+            const listEl = document.getElementById('recent-projects-list');
+            listEl.innerHTML = '';
+            if (projects.length === 0) {
+                listEl.innerHTML = '<p class="text-gray-500 text-sm">履歴はありません。</p>';
+                return;
+            }
+            projects.forEach(id => {
+                const item = document.createElement('button');
+                item.className = 'w-full text-left p-2 bg-gray-100 hover:bg-gray-200 rounded-md';
+                item.textContent = id;
+                item.onclick = () => startApp(id);
+                listEl.appendChild(item);
+            });
+        }
+
+        async function startApp(projectId) {
+            if (unsubscribeWells) unsubscribeWells();
+            if (unsubscribeMeasurements) unsubscribeMeasurements();
+            closePanel();
+            wellMarkersLayer.clearLayers();
+            wellMarkers = {};
+            wellDataCache = {};
+
+            currentProjectId = projectId;
+            
+            localStorage.setItem('currentProjectId', projectId);
+            let recentProjects = JSON.parse(localStorage.getItem('recentProjects') || '[]');
+            if (!recentProjects.includes(projectId)) {
+                recentProjects.unshift(projectId);
+                recentProjects = recentProjects.slice(0, 5);
+                localStorage.setItem('recentProjects', JSON.stringify(recentProjects));
+                updateRecentProjectsList(recentProjects);
+            }
+
+            document.getElementById('current-project-id-display').textContent = projectId;
+            document.getElementById('project-indicator').classList.remove('hidden');
+            document.getElementById('project-id-input').value = '';
+            hideProjectModal();
+            
+            if (!map) initMap();
+            await populateSampleData();
+            listenForWells();
+            
+            console.log(`プロジェクト "${projectId}" を開始しました。`);
         }
         
         // =================================================================================
@@ -356,10 +523,11 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // =================================================================================
         
         function getCollections() {
-            // ★★★★★ 修正点: GitHub Pages用にプロジェクトIDをフォールバックとして使用 ★★★★★
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'idochousa2025';
-            const wellsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'wells');
-            const measurementsCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'measurements');
+            if (!currentProjectId) {
+                throw new Error("プロジェクトが選択されていません。");
+            }
+            const wellsCollectionRef = collection(db, 'projects', currentProjectId, 'wells');
+            const measurementsCollectionRef = collection(db, 'projects', currentProjectId, 'measurements');
             return { wellsCollectionRef, measurementsCollectionRef };
         }
 
@@ -368,27 +536,25 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             const snapshot = await getDocs(wellsCollectionRef);
 
             if (snapshot.empty) {
-                console.log('Firestoreが空のため、サンプルデータを投入します');
+                console.log(`プロジェクト "${currentProjectId}" が空のため、サンプルデータを投入します`);
                 const wells = [
-                    { id: 'well-001', name: 'A-1観測井', address: '東京都千代田区', elevation: 25.5, lat: 35.681236, lng: 139.767125 },
-                    { id: 'well-002', name: 'B-3調査井', address: '神奈川県横浜市', elevation: 15.2, lat: 35.443707, lng: 139.638031 },
-                    { id: 'well-003', name: 'C-5揚水井', address: '埼玉県さいたま市', elevation: 8.9, lat: 35.861729, lng: 139.645485 }
+                    { id: 'well-001', name: 'A-1観測井', address: '東京都千代田区', elevation: 25.5, lat: 35.681236, lng: 139.767125, color: '#3b82f6' },
+                    { id: 'well-002', name: 'B-3調査井', address: '神奈川県横浜市', elevation: 15.2, lat: 35.443707, lng: 139.638031, color: '#ef4444' },
                 ];
                 const measurements = [
                     { well_id: 'well-001', timestamp: new Date('2025-03-15T10:00:00Z'), water_level: 15.23, operator_id: 'sample_user' },
                     { well_id: 'well-001', timestamp: new Date('2025-04-15T10:05:00Z'), water_level: 15.18, operator_id: 'sample_user' },
-                    { well_id: 'well-001', timestamp: new Date('2025-05-15T09:55:00Z'), water_level: 15.35, operator_id: 'sample_user' },
-                    { well_id: 'well-002', timestamp: new Date('2025-05-20T11:00:00Z'), water_level: 8.50, operator_id: 'sample_user' },
                 ];
 
                 const { measurementsCollectionRef } = getCollections();
                 const batch = writeBatch(db);
                 wells.forEach(well => {
-                    const docRef = doc(wellsCollectionRef, well.id);
-                    batch.set(docRef, well);
+                    const {id, ...data} = well;
+                    const docRef = doc(wellsCollectionRef, id);
+                    batch.set(docRef, data);
                 });
                 measurements.forEach(m => {
-                    const docRef = doc(collection(measurementsCollectionRef)); // Auto-generate ID
+                    const docRef = doc(collection(measurementsCollectionRef));
                     batch.set(docRef, m);
                 });
                 await batch.commit();
@@ -399,31 +565,68 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         }
         
         function listenForWells() {
-            if (unsubscribeWells) unsubscribeWells(); // Stop previous listener
+            if (unsubscribeWells) unsubscribeWells();
+            if (!currentProjectId) return;
             
             const { wellsCollectionRef } = getCollections();
             unsubscribeWells = onSnapshot(wellsCollectionRef, (snapshot) => {
                 const wells = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                wellDataCache = wells.reduce((acc, well) => {
+                    acc[well.id] = well;
+                    return acc;
+                }, {});
                 updateMapMarkers(wells);
             }, (error) => {
                 console.error("Error listening for well updates:", error);
             });
         }
         
+        // ★★★★★ 変更点: SVGアイコン作成関数を追加 ★★★★★
+        function createColorIcon(color = '#3b82f6') {
+            const svgIcon = `
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="30" height="30">
+                    <path fill="${color}" stroke="#fff" stroke-width="1.5" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                    <circle cx="12" cy="9" r="2.5" fill="#fff"/>
+                </svg>`;
+
+            return L.divIcon({
+                html: svgIcon,
+                className: 'custom-marker-icon',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30],
+                popupAnchor: [0, -30]
+            });
+        }
+
         function updateMapMarkers(wells) {
             wellMarkersLayer.clearLayers(); 
-            wellMarkers = {}; // マーカー参照をリセット
+            wellMarkers = {};
             
             if(wells.length === 0) return;
 
             wells.forEach(well => {
                 if (well.lat == null || well.lng == null) return;
-                const marker = L.marker([well.lat, well.lng]);
+                
+                // ★★★★★ 変更点: カスタムアイコンを使用 ★★★★★
+                const icon = createColorIcon(well.color);
+                const marker = L.marker([well.lat, well.lng], { icon: icon });
+
                 marker.bindPopup(`<b>${well.name}</b>`).on('click', () => {
                     openWellDetailsPanel(well);
                 });
+
+                // ★★★★★ 変更点: ラベル表示状態に応じてツールチップを設定 ★★★★★
+                if (areLabelsVisible) {
+                    marker.bindTooltip(well.name, {
+                        permanent: true,
+                        direction: 'right',
+                        offset: [15, 0],
+                        className: 'leaflet-tooltip-permanent'
+                    }).openTooltip();
+                }
+
                 wellMarkersLayer.addLayer(marker);
-                wellMarkers[well.id] = marker; // マーカーをIDで保存
+                wellMarkers[well.id] = marker;
             });
 
             if (Object.keys(wellMarkers).length > 0) {
@@ -437,7 +640,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         // =================================================================================
         
         function initMap() {
-            if (map) return; // Initialize map only once
+            if (map) return;
             map = L.map('map').setView([35.681236, 139.767125], 10);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -462,13 +665,11 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             panel.classList.remove('slide-out');
             panel.classList.add('slide-in');
             
-            // Listen for measurements of the selected well
             const { measurementsCollectionRef } = getCollections();
             const q = query(measurementsCollectionRef, where("well_id", "==", well.id));
             
             unsubscribeMeasurements = onSnapshot(q, (snapshot) => {
                 const measurements = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
-                // Firestore timestamp needs to be converted to JS Date
                 measurements.forEach(m => {
                     if (m.timestamp && m.timestamp.toDate) {
                         m.timestamp = m.timestamp.toDate();
@@ -503,17 +704,29 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 li.className = 'flex justify-between items-center p-3 bg-white border rounded-md';
                 const date = new Date(m.timestamp).toLocaleString('ja-JP');
                 const operator = m.operator_id ? m.operator_id.substring(0,8) : 'N/A';
-
+                
+                // ★★★★★ 変更点: 編集ボタンを追加 ★★★★★
                 li.innerHTML = `
-                    <div>
+                    <div class="flex-grow">
                         <p class="font-semibold text-gray-800">${m.water_level.toFixed(2)} m</p>
                         <p class="text-sm text-gray-500">${date}</p>
                     </div>
-                    <div class="text-xs text-gray-400" title="測定者: ${m.operator_id}">
+                    <div class="text-xs text-gray-400 mr-4" title="測定者: ${m.operator_id}">
                         ${operator}
                     </div>
+                    <button class="edit-measurement-btn p-2 text-gray-500 hover:text-blue-600" data-id="${m.id}" title="編集">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                          <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
                 `;
                 listEl.appendChild(li);
+            });
+            
+            // 編集ボタンにイベントリスナーを追加
+            document.querySelectorAll('.edit-measurement-btn').forEach(btn => {
+                btn.addEventListener('click', () => openEditMeasurementModal(btn.dataset.id));
             });
         }
         
@@ -684,14 +897,13 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 }
 
                 const wellData = {
-                    id: row.well_id,
                     name: row.well_name,
                     lat: lat,
                     lng: lng,
                     address: row.address || '',
                     elevation: isNaN(elevation) ? null : elevation
                 };
-                const docRef = doc(wellsCollectionRef, wellData.id);
+                const docRef = doc(wellsCollectionRef, row.well_id);
                 batch.set(docRef, wellData);
             });
 
@@ -803,7 +1015,8 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
 
             const newWell = {
                 name, lat, lng, address,
-                elevation: elevation ? parseFloat(elevation) : null
+                elevation: elevation ? parseFloat(elevation) : null,
+                color: '#3b82f6' // Default color
             };
             
             const { wellsCollectionRef } = getCollections();
@@ -814,16 +1027,7 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 console.log('新規井戸を保存しました:', newWell);
                 addWellModal.classList.add('modal-hidden');
                 document.getElementById('add-well-form').reset();
-
-                // ★★★★★ 修正点: マーカーを手動で即時追加 ★★★★★
-                const fullWellData = { id, ...newWell };
-                const marker = L.marker([fullWellData.lat, fullWellData.lng]);
-                marker.bindPopup(`<b>${fullWellData.name}</b>`).on('click', () => {
-                    openWellDetailsPanel(fullWellData);
-                });
-                wellMarkersLayer.addLayer(marker);
-                wellMarkers[fullWellData.id] = marker;
-                map.flyTo([fullWellData.lat, fullWellData.lng], 16);
+                map.flyTo([newWell.lat, newWell.lng], 16);
 
             } catch(e) {
                 errorDiv.textContent = `データベースエラー: ${e.message}`;
@@ -838,11 +1042,9 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
 
             const batch = writeBatch(db);
 
-            // 1. Delete the well document
             const wellDocRef = doc(wellsCollectionRef, wellIdToDelete);
             batch.delete(wellDocRef);
 
-            // 2. Query and delete all associated measurements
             const q = query(measurementsCollectionRef, where("well_id", "==", wellIdToDelete));
             const snapshot = await getDocs(q);
             snapshot.forEach(doc => {
@@ -854,7 +1056,6 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 console.log(`井戸 ${wellIdToDelete} と関連データを削除しました。`);
                 deleteConfirmModal.classList.add('modal-hidden');
                 closePanel();
-                // Realtime listener will handle removing the marker
             } catch (e) {
                 console.error('削除処理中にエラーが発生しました:', e);
                 alert('削除中にエラーが発生しました。');
@@ -874,10 +1075,14 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             } else {
                 wells.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja')).forEach(well => {
                     const li = document.createElement('li');
-                    li.className = 'p-3 hover:bg-gray-100 rounded-md cursor-pointer border-b';
+                    li.className = 'p-3 hover:bg-gray-100 rounded-md cursor-pointer border-b flex items-center space-x-3';
+                    // ★★★★★ 変更点: リストにも色表示を追加 ★★★★★
                     li.innerHTML = `
-                        <p class="font-semibold text-gray-800">${well.name}</p>
-                        <p class="text-sm text-gray-500">${well.id}</p>
+                        <div class="w-4 h-4 rounded-full" style="background-color: ${well.color || '#3b82f6'}"></div>
+                        <div>
+                            <p class="font-semibold text-gray-800">${well.name}</p>
+                            <p class="text-sm text-gray-500">${well.id}</p>
+                        </div>
                     `;
                     li.addEventListener('click', () => jumpToWell(well));
                     listContainer.appendChild(li);
@@ -898,6 +1103,103 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
             }
         }
         
+        // ★★★★★ 変更点: 新機能のイベントリスナーとハンドラを追加 ★★★★★
+        
+        // --- 測定データ編集機能 ---
+        const editMeasurementModal = document.getElementById('edit-measurement-modal');
+        
+        async function openEditMeasurementModal(measurementId) {
+            const { measurementsCollectionRef } = getCollections();
+            const docRef = doc(measurementsCollectionRef, measurementId);
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const timestamp = data.timestamp.toDate();
+                // YYYY-MM-DDThh:mm形式に変換
+                const localISOString = new Date(timestamp.getTime() - (timestamp.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+
+                document.getElementById('edit-measurement-id').value = measurementId;
+                document.getElementById('edit-water-level').value = data.water_level;
+                document.getElementById('edit-timestamp').value = localISOString;
+                
+                editMeasurementModal.classList.remove('modal-hidden');
+            } else {
+                alert('編集対象のデータが見つかりませんでした。');
+            }
+        }
+
+        async function handleSaveEditMeasurement() {
+            const id = document.getElementById('edit-measurement-id').value;
+            const waterLevel = parseFloat(document.getElementById('edit-water-level').value);
+            const timestampStr = document.getElementById('edit-timestamp').value;
+
+            if (!id || isNaN(waterLevel) || !timestampStr) {
+                alert('すべての項目を正しく入力してください。');
+                return;
+            }
+            
+            const timestamp = new Date(timestampStr);
+            const { measurementsCollectionRef } = getCollections();
+            const docRef = doc(measurementsCollectionRef, id);
+
+            try {
+                await updateDoc(docRef, {
+                    water_level: waterLevel,
+                    timestamp: timestamp
+                });
+                console.log('測定データを更新しました。');
+                editMeasurementModal.classList.add('modal-hidden');
+            } catch (error) {
+                console.error('測定データの更新に失敗:', error);
+                alert('データの更新に失敗しました。');
+            }
+        }
+
+        document.getElementById('save-edit-measurement-btn').addEventListener('click', handleSaveEditMeasurement);
+        document.getElementById('cancel-edit-measurement-btn').addEventListener('click', () => {
+            editMeasurementModal.classList.add('modal-hidden');
+        });
+
+        // --- マーカー色変更機能 ---
+        document.getElementById('color-palette').addEventListener('click', async (e) => {
+            if (e.target.tagName === 'BUTTON' && currentWell) {
+                const color = e.target.dataset.color;
+                const { wellsCollectionRef } = getCollections();
+                const docRef = doc(wellsCollectionRef, currentWell.id);
+                try {
+                    await updateDoc(docRef, { color: color });
+                    console.log(`井戸 ${currentWell.id} の色を ${color} に変更しました。`);
+                } catch (error) {
+                    console.error('色の更新に失敗:', error);
+                    alert('色の更新に失敗しました。');
+                }
+            }
+        });
+
+        // --- ラベル表示/非表示機能 ---
+        function toggleLabels() {
+            areLabelsVisible = !areLabelsVisible;
+            Object.keys(wellMarkers).forEach(wellId => {
+                const marker = wellMarkers[wellId];
+                const well = wellDataCache[wellId];
+                if (well) {
+                    if (areLabelsVisible) {
+                        marker.bindTooltip(well.name, {
+                            permanent: true,
+                            direction: 'right',
+                            offset: [15, 0],
+                            className: 'leaflet-tooltip-permanent'
+                        }).openTooltip();
+                    } else {
+                        marker.unbindTooltip();
+                    }
+                }
+            });
+        }
+        document.getElementById('toggle-labels-btn').addEventListener('click', toggleLabels);
+
+
         // =================================================================================
         // アプリケーションの起動
         // =================================================================================
@@ -910,13 +1212,11 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
     <!-- 
       以下の内容で `sw.js` と `manifest.json` を作成し、
       このHTMLファイルと同じディレクトリに配置してください。
-      sw.jsの内容は、同期処理が不要になったため、キャッシュ機能のみに簡略化されています。
     -->
     
     <!-- 
     // ============== sw.js ==============
-    const CACHE_NAME = 'well-app-cache-v2';
-    // キャッシュするファイルのリスト
+    const CACHE_NAME = 'well-app-cache-v4'; // Cache version updated
     const urlsToCache = [
         '/',
         '/index.html',
@@ -925,8 +1225,6 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
         'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
         'https://cdn.jsdelivr.net/npm/chart.js'
     ];
-
-    // install イベント: アプリケーションのシェル（UI）をキャッシュする
     self.addEventListener('install', event => {
         event.waitUntil(
             caches.open(CACHE_NAME)
@@ -936,17 +1234,13 @@ well-002,B-3調査井,35.443,139.638,神奈川県横浜市,15.2</pre>
                 })
         );
     });
-
-    // fetch イベント: ネットワークリクエストを横取りし、キャッシュを優先して返す
     self.addEventListener('fetch', event => {
         event.respondWith(
             caches.match(event.request)
                 .then(response => {
-                    // キャッシュにあればそれを返す
                     if (response) {
                         return response;
                     }
-                    // なければネットワークから取得しに行く
                     return fetch(event.request);
                 })
         );
